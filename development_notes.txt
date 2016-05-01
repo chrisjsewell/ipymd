@@ -1,0 +1,2 @@
+created intitial environment:
+conda create -n ipymd -c http://conda.binstar.org/gabrielelanaro chemlab matplotlib pandas ipython ipython-notebook pil pyopengl==3.0.2
