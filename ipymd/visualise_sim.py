@@ -17,7 +17,7 @@ class Visualise_Sim(object):
     """ """
     def __init__(self):
         pass
-    def visualise(self, atoms_df, width=400, height=400):
+    def visualise(self, atoms_df, xrot=0, yrot=0, width=400, height=400):
         # initialize graphic engine
         v = QtViewer()
         w = v.widget 
@@ -30,8 +30,8 @@ class Visualise_Sim(object):
         v.add_renderer(renderer, r_array, type_array)
 
         w.camera.autozoom(r_array)
-        w.camera.orbit_x(45*np.pi/180.)
-        w.camera.orbit_y(45*np.pi/180.)
+        w.camera.orbit_x(xrot*np.pi/180.)
+        w.camera.orbit_y(yrot*np.pi/180.)
         
         image = w.toimage(width, height)
         b = BytesIO()
