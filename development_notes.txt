@@ -1,2 +1,101 @@
 created intitial environment:
 conda create -n ipymd -c http://conda.binstar.org/gabrielelanaro chemlab matplotlib pandas ipython ipython-notebook pil pyopengl==3.0.2
+
+working (on OSX) package list:
+alabaster                 0.7.7                    py27_0    defaults
+appnope                   0.1.0                    py27_0    defaults
+babel                     2.3.3                    py27_0    defaults
+backports                 1.0                      py27_0    defaults
+backports-abc             0.4                       <pip>
+backports.shutil-get-terminal-size 1.0.0                     <pip>
+backports.ssl-match-hostname 3.4.0.2                   <pip>
+backports_abc             0.4                      py27_0    defaults
+cclib                     1.3                  np19py27_0    http://conda.binstar.org/gabrielelanaro/osx-64/cclib-1.3-np19py27_0.tar.bz2
+chemlab                   0.4                  np19py27_0    http://conda.binstar.org/gabrielelanaro/osx-64/chemlab-0.4-np19py27_0.tar.bz2
+chemview                  0.1                  np19py27_0    http://conda.binstar.org/gabrielelanaro/osx-64/chemview-0.1-np19py27_0.tar.bz2
+configparser              3.5.0b2                  py27_1    defaults
+decorator                 4.0.9                    py27_0    defaults
+distribute                0.6.45                   py27_1    defaults
+docutils                  0.12                     py27_0    defaults
+entrypoints               0.2                      py27_1    defaults
+enum34                    1.1.3                    py27_0    defaults
+freetype                  2.5.5                         0    defaults
+funcsigs                  1.0.0                    py27_0    defaults
+get_terminal_size         1.0.0                    py27_0    defaults
+imagesize                 0.7.0                    py27_0    defaults
+ipykernel                 4.3.1                    py27_0    defaults
+ipython                   4.2.0                    py27_0    defaults
+ipython-genutils          0.1.0                     <pip>
+ipython-notebook          4.0.4                    py27_0    defaults
+ipython_genutils          0.1.0                    py27_0    defaults
+jedi                      0.9.0                    py27_0    defaults
+jinja2                    2.8                      py27_0    defaults
+jpeg                      8d                            1    defaults
+jsonschema                2.4.0                    py27_0    defaults
+jupyter-client            4.2.2                     <pip>
+jupyter-core              4.1.0                     <pip>
+jupyter_client            4.2.2                    py27_0    defaults
+jupyter_core              4.1.0                    py27_0    defaults
+lcms                      1.19                          0    defaults
+libpng                    1.6.17                        0    defaults
+llvmlite                  0.10.0                   py27_0    defaults
+markupsafe                0.23                     py27_0    defaults
+matplotlib                1.4.3                np19py27_3    defaults
+mistune                   0.7.2                    py27_1    defaults
+mkl                       11.3.1                        0    defaults
+nbconvert                 4.2.0                    py27_0    defaults
+nbformat                  4.0.1                    py27_0    defaults
+notebook                  4.2.0                    py27_0    defaults
+numba                     0.25.0               np19py27_0    defaults
+numpy                     1.9.3                    py27_1    defaults
+openssl                   1.0.2g                        0    defaults
+pandas                    0.16.2               np19py27_0    defaults
+path.py                   8.2.1                    py27_0    defaults
+pep8                      1.7.0                    py27_0    defaults
+pexpect                   4.0.1                    py27_0    defaults
+pickleshare               0.5                      py27_0    defaults
+pil                       1.1.7                    py27_2    defaults
+pip                       8.1.1                    py27_1    defaults
+psutil                    4.1.0                    py27_1    defaults
+ptyprocess                0.5                      py27_0    defaults
+pyflakes                  1.1.0                    py27_0    defaults
+pygments                  2.1.3                    py27_0    defaults
+pyopengl                  3.0.2                    py27_0    defaults
+pyparsing                 2.0.3                    py27_0    defaults
+pyqt                      4.11.4                   py27_1    defaults
+python                    2.7.11                        0    defaults
+python-dateutil           2.5.2                    py27_0    defaults
+python.app                1.2                      py27_4    defaults
+pytz                      2016.3                   py27_0    defaults
+pyzmq                     15.2.0                   py27_0    defaults
+qt                        4.8.7                         1    defaults
+qtconsole                 4.2.1                    py27_0    defaults
+readline                  6.2                           2    defaults
+rope                      0.9.4                    py27_1    defaults
+scipy                     0.17.0               np19py27_0    defaults
+setuptools                20.7.0                   py27_0    defaults
+simplegeneric             0.8.1                    py27_0    defaults
+singledispatch            3.4.0.3                  py27_0    defaults
+sip                       4.16.9                   py27_0    defaults
+six                       1.10.0                   py27_0    defaults
+snowballstemmer           1.2.1                    py27_0    defaults
+sphinx                    1.4.1                    py27_0    defaults
+sphinx-rtd-theme          0.1.9                     <pip>
+sphinx_rtd_theme          0.1.9                    py27_0    defaults
+spyder                    2.3.8                    py27_1    defaults
+sqlite                    3.9.2                         0    defaults
+ssl_match_hostname        3.4.0.2                  py27_1    defaults
+terminado                 0.5                      py27_1    defaults
+tk                        8.5.18                        0    defaults
+tornado                   4.3                      py27_0    defaults
+traitlets                 4.2.1                    py27_0    defaults
+wheel                     0.29.0                   py27_0    defaults
+zlib                      1.2.8                         0    defaults
+
+working test code:
+from ipymd.md_data import LAMMPS_Data
+from ipymd.visualise_sim import Visualise_Sim
+data=LAMMPS_Data(sys_path='/Users/cjs14/GitHub/ipymd/ipymd/lammps_test_data/system.dump',atom_path='/Users/cjs14/GitHub/ipymd/ipymd/lammps_test_data/atom.dump')
+Visualise_Sim().visualise(data.get_atom_data(100),xrot=90)
+
+TODO: system data needs to include timestep (not just index=1,2,…)

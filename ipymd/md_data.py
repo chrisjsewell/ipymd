@@ -58,6 +58,7 @@ class LAMMPS_Data(MD_Data):
     def __init__(self, sys_path='', atom_path=''):
         self.sys_path = sys_path
         self.atom_path = atom_path
+        #TODO test paths exist
         
     #TODO include simulation bounds
     def get_system_data_all(self):
