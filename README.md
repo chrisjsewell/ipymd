@@ -139,7 +139,7 @@ ax.set_ylabel('Temperature (K)');
 ```
 
 
-![png](output_3_0.png)
+![png](images/output_3_0.png)
 
 
 
@@ -231,7 +231,7 @@ vis.visualise(atom_data,xrot=45,yrot=45)
 
 
 
-![png](output_5_0.png)
+![png](images/output_5_0.png)
 
 
 
