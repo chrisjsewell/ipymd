@@ -14,20 +14,57 @@ from chemlab.graphics.renderers.atom import AtomRenderer
 from IPython.display import Image as ipy_Image
 
 class Visualise_Sim(object):
-    """ """
-    def __init__(self):
-        pass
-    def visualise(self, atoms_df, xrot=0, yrot=0, width=400, height=400):
+    """ 
+
+    For style *real*, these are the units:
+    
+        mass = grams/mole
+        distance = Angstroms
+        time = femtoseconds
+        energy = Kcal/mole
+        velocity = Angstroms/femtosecond
+        force = Kcal/mole-Angstrom
+        torque = Kcal/mole
+        temperature = Kelvin
+        pressure = atmospheres
+        dynamic viscosity = Poise
+        charge = multiple of electron charge (1.0 is a proton)
+        dipole = charge*Angstroms
+        electric field = volts/Angstrom
+        density = gram/cm^dim
+    
+    """
+    _unit_dict = {'real':{'distance':10.}}
+    
+    def __init__(self, units='real'):
+        assert units=='real', 'currently only supports real units'
+        self._units = units
+        
+    def _unit_conversion(self, values, measure):
+        
+        if not self._unit_dict.has_key(self._units):
+            raise NotImplementedError
+        if not self._unit_dict[self._units].has_key(measure):
+            raise NotImplementedError
+
+        return values * self._unit_dict[self._units][measure]
+        
+    def visualise(self, atoms_df, type_dict={}, xrot=0, yrot=0, width=400, height=400):
+
+        assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
+
         # initialize graphic engine
         v = QtViewer()
         w = v.widget 
         w.initializeGL()
 
         r_array = np.array([np.array([s['xs'], s['ys'], s['zs']]) for i,s in atoms_df.iterrows()])
-        type_array = ['Fe' for i,s in atoms_df.iterrows()]
+        r_array = self._unit_conversion(r_array, 'distance')
+        
+        type_array = [type_dict.get(s['type'], 'Xx') for i,s in atoms_df.iterrows()]
 
         renderer = AtomRenderer
-        v.add_renderer(renderer, r_array, type_array)
+        r = v.add_renderer(renderer, r_array, type_array)
 
         w.camera.autozoom(r_array)
         w.camera.orbit_x(xrot*np.pi/180.)
@@ -39,6 +76,7 @@ class Visualise_Sim(object):
         data = b.getvalue()
 
         # Cleanup
+        del r
         del v
         del w
         

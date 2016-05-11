@@ -6,6 +6,27 @@ Created on Sun May  1 22:49:20 2016
 """
 import numpy as np
 import pandas as pd
+import os
+import glob
+import re
+
+import re
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split('(\d+)', text) ]
+
+def skiplines(f, num):
+    """ skip line(s) in an open file """
+    for n in range(num):
+        line = next(f)
+    return line
 
 class MD_Data(object):
     """
@@ -14,11 +35,8 @@ class MD_Data(object):
     """
     def __init__(self):
         raise NotImplemented
-    def get_system_data_all(self):
-        """ return pandas.DataFrame """
-        raise NotImplemented
-    def get_system_data(self, step):
-        """ return pandas.Series """
+    def get_system_data(self, step=None):
+        """ return pandas.DataFrame or pandas.Series (for single step) """
         raise NotImplemented
     def get_atom_data(self, step):
         """ return pandas.DataFrame """
@@ -36,84 +54,93 @@ class LAMMPS_Data(MD_Data):
     Atom level data created with `dump`, e.g.;
     
         dump atom_info all custom 100 atom.dump id type xs ys zs mass q
-
-    For style *real*, these are the units:
-    
-        mass = grams/mole
-        distance = Angstroms
-        time = femtoseconds
-        energy = Kcal/mole
-        velocity = Angstroms/femtosecond
-        force = Kcal/mole-Angstrom
-        torque = Kcal/mole
-        temperature = Kelvin
-        pressure = atmospheres
-        dynamic viscosity = Poise
-        charge = multiple of electron charge (1.0 is a proton)
-        dipole = charge*Angstroms
-        electric field = volts/Angstrom
-        density = gram/cm^dim
+        OR (file per configuration)
+        dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
     """
     def __init__(self, sys_path='', atom_path=''):
-        self.sys_path = sys_path
-        self.atom_path = atom_path
-        #TODO test paths exist
+        """
+        atom_path
+        """
+        assert os.path.exists(sys_path) or not sys_path, 'sys_path does not exist'
+        self._sys_path = sys_path
         
-    #TODO include simulation bounds
-    def get_system_data_all(self):
-        """ return pandas.DataFrame """
-        sys_df = pd.read_csv(self.sys_path, sep=' ',)
+        if '*' in atom_path:            
+            self._single_atom_file = False  
+            self._atom_path = glob.glob(atom_path)
+            assert len(self._atom_path)>0, 'atom_path does not exist'
+            self._atom_path.sort(key=natural_keys)
+        else:        
+            assert os.path.exists(atom_path) or not atom_path, 'atom_path does not exist'
+            self._single_atom_file = True
+            self._atom_path = atom_path
+        
+    def get_system_data(self, step=None):
+        """ return pandas.DataFrame or pandas.Series (for single step) """
+        sys_df = pd.read_csv(self._sys_path, sep=' ',)
         sys_df.index += 1
-        return sys_df
-        
-    def get_system_data(self, step):
-        """ return pandas.Series """
-        sys_df = pd.read_csv(self.sys_path, sep=' ',)
-        sys_df.index += 1
-        return sys_df.loc[step]
-        
-    def _skiplines(self, f, num):
-        """ skip line(s) in a file """
-        for n in range(num):
-            line = next(f)
-        return line
-        
-    def _convert_units(self, atom_df):
-        """ convert x,y,z from Angstrom to nm """
-        for head in ['xs','ys','zs']:
-            atom_df[head] = atom_df[head]*10
-        return atom_df
-        
+        if step is None:
+            return sys_df
+        else:
+            return sys_df.loc[step]
+                        
     def get_atom_data(self, step):
         """ return pandas.DataFrame """
-        found_timestep = False
-        with open(self.atom_path, 'r') as f:
-            for line in f:
-                if 'ITEM: TIMESTEP' in line: 
-                    line = self._skiplines(f, 1)
-                    if step==int(line.split()[0]):
-                        found_timestep = True
-                        line = self._skiplines(f, 2)
-                        num_atoms = int(line.split()[0])
-                        line = self._skiplines(f, 5)
-                        headers = line.split()[2:]
-                        atoms = []
-                        for atom in range(num_atoms):
-                            line = self._skiplines(f, 1)
-                            atoms.append(np.array(line.split(),dtype=float))
-                        atoms_df = pd.DataFrame(atoms, columns=headers)
-    
-                        break
-                    else:
-                        # find the number of atoms and skip that many lines
-                        line = self._skiplines(f, 2)
-                        self._skiplines(f, int(line.split()[0])+5) 
-        
-        if found_timestep:
-            return self._convert_units(atoms_df)
+        if self._single_atom_file:
+            current_step = 0
+            with open(self._atom_path, 'r') as f:
+                for line in f:
+                    if 'ITEM: TIMESTEP' in line: 
+                        
+                        if step==current_step:
+                            return self._extract_atom_data(f)
+                        else:
+                            current_step+=1
+                            # find the number of atoms and skip that many lines
+                            line = skiplines(f, 3)
+                            skiplines(f, int(line.split()[0])+5) 
+            
+            if current_step>0:
+                raise IOError("timestep {0} exceeds maximum ({1})".format(
+                                                        step, current_step-1))
+            else:
+                raise IOError("atom file of wrong format")
         else:
-            raise IOError("couldn't find required timestep")
-
-    def count_steps(self):
-        return sum(1 for line in open(self.sys_path)) - 1
+            if len(self._atom_path)-1 < step:
+                raise IOError("timestep {0} exceeds maximum ({1})".format
+                                                (step, len(self._atom_path)-1))
+            with open(self._atom_path[step], 'r') as f:
+                for line in f:
+                    if 'ITEM: TIMESTEP' in line: 
+                        return self._extract_atom_data(f)
+            raise IOError("atom file of wrong format")
+    
+    def _extract_atom_data(self, f):
+        """ """
+        line = skiplines(f, 1)
+        time = int(line.split()[0])
+        line = skiplines(f, 2)
+        num_atoms = int(line.split()[0])
+        line = skiplines(f, 2)
+        x_lims = [float(line.split()[0]), float(line.split()[1])]
+        line = skiplines(f, 1)
+        y_lims = [float(line.split()[0]), float(line.split()[1])]
+        line = skiplines(f, 1)
+        z_lims = [float(line.split()[0]), float(line.split()[1])]
+        line = skiplines(f, 1)
+        headers = line.split()[2:]
+        atoms = []
+        for atom in range(num_atoms):
+            line = skiplines(f, 1)
+            atoms.append(np.array(line.split(),dtype=float))
+        atoms_df = pd.DataFrame(atoms, columns=headers)
+        
+        return atoms_df, time, np.array([x_lims, y_lims, z_lims])
+        
+    def count_timesteps(self):
+        if not self._single_atom_file:
+            return len(self._atom_path) - 1       
+        elif self._sys_path:
+            return sum(1 for line in open(self._sys_path)) - 1
+        else:
+            raise Exception('cannot compute from current data') 
