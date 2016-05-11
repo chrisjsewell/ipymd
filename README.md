@@ -24,12 +24,12 @@ from ipymd.visualise_sim import Visualise_Sim
 ```python
 data = LAMMPS_Data(
     sys_path='ipymd/lammps_test_data/system.dump',
-    atom_path='ipymd/lammps_test_data/atom.dump')
+    atom_path='ipymd/lammps_test_data/atom_dump/atoms_*.dump')
 ```
 
 
 ```python
-sys_data = data.get_system_data_all()
+sys_data = data.get_system_data()
 sys_data.head()
 ```
 
@@ -144,7 +144,7 @@ ax.set_ylabel('Temperature (K)');
 
 
 ```python
-atom_data = data.get_atom_data(0)
+atom_data, time, bounds = data.get_atom_data(0)
 atom_data.head()
 ```
 
@@ -225,7 +225,7 @@ atom_data.head()
 
 ```python
 vis = Visualise_Sim()
-vis.visualise(atom_data,xrot=45,yrot=45)
+vis.visualise(atom_data,type_dict={1:'Fe'},xrot=45,yrot=45)
 ```
 
 
