@@ -122,7 +122,8 @@ class Visualise_Sim(object):
             vectors = [[x0+axes_length,y0,z0], 
                        [x0,y0+axes_length,z0], 
                        [x0,y0,z0+axes_length]]
-            colors = [str_to_colour('green'),str_to_colour('red'),str_to_colour('blue')]
+            # colors consistent with ovito
+            colors = [str_to_colour('red'),str_to_colour('green'),str_to_colour('blue')]
             for vector, color in zip(vectors, colors):
                 # for some reason it won't render if theres not a 'dummy' 2nd element
                 startends = [[origin, vector],[origin, vector]]                      
