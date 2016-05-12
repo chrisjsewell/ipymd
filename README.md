@@ -10,7 +10,7 @@ The aim of `ipymd` is to produce IPython Notebooks that include:
 - Static images of the simulations
 - Plots of simulation data
 
-It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) package, that is an API layer on top of OpenGL.   
+It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) package, that is an API layer on top of OpenGL. It will also aim to parse data in simple formats, such as [pandas](http://pandas.pydata.org/) dataframes, which are easy to create and use independantly from this package.  
 
 ## Example Output
 
