@@ -11,6 +11,8 @@ import numpy as np
 from chemlab.graphics.qtviewer import QtViewer
 from chemlab.graphics.renderers.atom import AtomRenderer
 from chemlab.graphics.renderers.box import BoxRenderer
+from chemlab.graphics.renderers.line import LineRenderer
+from chemlab.graphics.colors import get as str_to_colour
 
 from IPython.display import Image as ipy_Image
 
@@ -53,7 +55,9 @@ class Visualise_Sim(object):
 
         return values * self._unit_dict[self._units][measure]
         
-    def visualise(self, atoms_df, type_dict={}, bounds=None, xrot=0, yrot=0, fov=10.,
+    def visualise(self, atoms_df, type_dict={}, bounds=None, 
+                  xrot=0, yrot=0, fov=10., 
+                  show_axes=True, axes_offset=(-0.2,0.2),
                   width=400, height=400):
         """ 
         rotx: rotation about x 
@@ -65,6 +69,7 @@ class Visualise_Sim(object):
         r_array = np.array([s[['xs','ys','zs']] for i,s in atoms_df.iterrows()])
         r_array = self._unit_conversion(r_array, 'distance')
         
+        
         type_array = [type_dict.get(s['type'], 'Xx') for i,s in atoms_df.iterrows()]
 
         # initialize graphic engine
@@ -73,7 +78,10 @@ class Visualise_Sim(object):
         w.initializeGL()
         w.camera.fov = fov
 
+        # add renderers
         rends = []
+
+        #simulation bounding box
         if not bounds is None:
             bounds = self._unit_conversion(bounds, 'distance')
             x0, y0, z0 = bounds[:,0]
@@ -87,16 +95,49 @@ class Visualise_Sim(object):
             vectors = np.array([[x1-x0,0,0],[0,y1-y0,0],[0,0,z1-z0]])
             rends.append(v.add_renderer(BoxRenderer, vectors))
             
-        rends.append(v.add_renderer(AtomRenderer, r_array, type_array))
+        rends.append(v.add_renderer(AtomRenderer, r_array, type_array))            
         
         if not bounds is None:
-            w.camera.autozoom(np.concatenate([r_array,vectors]))
+            #TODO account for other corners of box?
+            all_array = np.concatenate([r_array,vectors])
         else:
-            w.camera.autozoom(r_array)
-        
+            all_array = r_array
+
         w.camera.orbit_x(xrot*np.pi/180.)
         w.camera.orbit_y(yrot*np.pi/180.)
         
+        if show_axes:
+            # find top-left 'origin' after transformations 
+
+            # fyi there is this function but doesn't work
+            # w.camera.unproject(-1.0, 1.0)
+            
+            axes_length = 1
+            
+            ones = np.ones((all_array.shape[0],1))
+            trans_array = np.apply_along_axis(w.camera.matrix.dot,1,np.concatenate((all_array,ones),axis=1))[:,[0,1,2]]
+            t_top_left = [trans_array[:,0].min() + axes_offset[0] - axes_length, 
+                          trans_array[:,1].max() + axes_offset[1], 
+                          trans_array[:,2].min(), 1]
+            
+            x0, y0, z0 = np.linalg.inv(w.camera.matrix).dot(t_top_left)[0:3]
+
+            origin = [x0, y0, z0]
+            all_array = np.concatenate([all_array, [origin]])
+            
+            vectors = [[x0+axes_length,y0,z0], 
+                       [x0,y0+axes_length,z0], 
+                       [x0,y0,z0+axes_length]]
+            colors = [str_to_colour('green'),str_to_colour('red'),str_to_colour('blue')]
+            for vector, color in zip(vectors, colors):
+                # for some reason it won't render if theres not a 'dummy' 2nd element
+                startends = [[origin, vector],[origin, vector]]                      
+                colors = [[color, color],[color, color]]
+                rends.append(v.add_renderer(LineRenderer, startends, colors))
+
+        w.camera.autozoom(all_array)
+
+        # convert scene to image
         image = w.toimage(width, height)
         b = BytesIO()
         image.save(b, format='png')
