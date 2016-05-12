@@ -13,36 +13,99 @@ from chemlab.graphics.renderers.atom import AtomRenderer
 from chemlab.graphics.renderers.box import BoxRenderer
 from chemlab.graphics.renderers.line import LineRenderer
 from chemlab.graphics.colors import get as str_to_colour
+from chemlab.graphics import colors as chemlab_colors
+from chemlab.db import ChemlabDB
+from chemlab.graphics.transformations import rotation_matrix
+def orbit_z(self, angle):
+    # Subtract pivot point
+    self.position -= self.pivot        
+    # Rotate
+    rot = rotation_matrix(-angle, self.c)[:3,:3]
+    self.position = np.dot(rot, self.position)        
+    # Add again the pivot point
+    self.position += self.pivot
+    
+    self.a = np.dot(rot, self.a)
+    self.b = np.dot(rot, self.b)
+    self.c = np.dot(rot, self.c)     
+from chemlab.graphics.camera import Camera
+Camera.orbit_z = orbit_z
+
 
 from IPython.display import Image as ipy_Image
+from PIL import Image, ImageChops
 
 class Visualise_Sim(object):
     """ 
-
-    For style *real*, these are the units:
-    
-        mass = grams/mole
-        distance = Angstroms
-        time = femtoseconds
-        energy = Kcal/mole
-        velocity = Angstroms/femtosecond
-        force = Kcal/mole-Angstrom
-        torque = Kcal/mole
-        temperature = Kelvin
-        pressure = atmospheres
-        dynamic viscosity = Poise
-        charge = multiple of electron charge (1.0 is a proton)
-        dipole = charge*Angstroms
-        electric field = volts/Angstrom
-        density = gram/cm^dim
-    
+    A class to visualise atom data    
     """
     _unit_dict = {'real':{'distance':0.1}}
     
-    def __init__(self, units='real'):
+    def __init__(self, colormap=None, radiimap=None, units='real'):
+        """
+        colormap: dict, should contain the 'Xx' key,value pair
+           A dictionary mapping atom types to colors. By default it is the color
+           scheme provided by `chemlab.graphics.colors.default_atom_map`. The 'Xx'
+           symbol value is taken as the default color.        
+        radii_map: dict, should contain the 'Xx' key,value pair.
+           A dictionary mapping atom types to radii. The default is the
+           mapping contained in `chemlab.db.vdw.vdw_dict`        
+        For units *real*, these are the units:
+        
+            mass = grams/mole
+            distance = Angstroms
+            time = femtoseconds
+            energy = Kcal/mole
+            velocity = Angstroms/femtosecond
+            force = Kcal/mole-Angstrom
+            torque = Kcal/mole
+            temperature = Kelvin
+            pressure = atmospheres
+            dynamic viscosity = Poise
+            charge = multiple of electron charge (1.0 is a proton)
+            dipole = charge*Angstroms
+            electric field = volts/Angstrom
+            density = gram/cm^dim
+        """
         assert units=='real', 'currently only supports real units'
         self._units = units
+        self._atomcolors = None
+        self.change_atom_colormap()
+        self._atomradii = None  
+        self.change_atom_radiimap()
         
+    def change_atom_colormap(self, colormap=None, colorstrs=False):
+        """
+        colormap : dict, should contain the 'Xx' key,value pair
+           A dictionary mapping atom types to colors, in RGBA format (0-255) 
+           By default it is the color scheme provided by 
+           `chemlab.graphics.colors.default_atom_map`. The 'Xx' symbol value is 
+           taken as the default color.   
+        colorstrs : bool
+            if True, colors should be strings matching colors in `chemlab.graphics.colors`
+        """
+        if colormap is None:
+            self._atomcolors = chemlab_colors.default_atom_map
+        else:
+            assert colormap.has_key('Xx'), "colormap should contain an 'Xx' default key"
+            if colorstrs:
+                colormap = dict([[k,str_to_colour(v)] for k,v in colormap.iteritems()])
+                if None in colormap.values():
+                    raise ValueError('one or more colors not found')
+            self._atomcolors = colormap
+
+    def change_atom_radiimap(self, radiimap=None):
+        """
+        radii_map: dict, should contain the 'Xx' key,value pair.
+           A dictionary mapping atom types to radii. The default is the
+           mapping contained in `chemlab.db.vdw.vdw_dict`        
+        """
+        if radiimap is None:
+            self._atomradii = ChemlabDB().get("data", 'vdwdict')
+        else:
+            assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
+            self._atomradii = radiimap
+
     def _unit_conversion(self, values, measure):
         """ 
         values : np.array 
@@ -55,15 +118,36 @@ class Visualise_Sim(object):
 
         return values * self._unit_dict[self._units][measure]
         
-    def visualise(self, atoms_df, type_dict={}, bounds=None, 
-                  xrot=0, yrot=0, fov=10., 
+    def _trim_image(self, im):
+        """
+        a simple solution to trim whitespace on the image
+        
+        1. It gets the border colour from the top left pixel, using getpixel, 
+        so you don't need to pass the colour.
+        2. Subtracts a scalar from the differenced image, 
+        this is a quick way of saturating all values under 100, 100, 100 to zero. 
+        So is a neat way to remove any 'wobble' resulting from compression.
+        """
+        bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
+        diff = ImageChops.difference(im, bg)
+        diff = ImageChops.add(diff, diff, 2.0, -100)
+        bbox = diff.getbbox()
+        if bbox:
+            return im.crop(bbox)
+
+    def visualise(self, atoms_df, type_dict={}, bounds=None, spheres=True, 
+                  xrot=0, yrot=0, zrot=0, fov=10., 
                   show_axes=True, axes_offset=(-0.2,0.2), axes_length=1,
                   width=400, height=400):
         """ 
-        rotx: rotation about x 
-        roty: rotation about y
+        bounds : np.array((3,2), dtype=float)
+            simulation box
+        sphere : render spheres, otherwise points
+        rotx: rotation about x (degrees)
+        roty: rotation about y (degrees)
+        rotz: rotation about z (degrees)
         (start x-axis horizontal, y-axis vertical)
-        bounds: np.array((3,2), dtype=float)
+        
         """
         assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
         r_array = np.array([s[['xs','ys','zs']] for i,s in atoms_df.iterrows()])
@@ -79,9 +163,10 @@ class Visualise_Sim(object):
         w.camera.fov = fov
 
         ## add renderers
+        ## ---------------
         rends = []
 
-        #simulation bounding box
+        #simulation bounding box render
         if not bounds is None:
             bounds = self._unit_conversion(bounds, 'distance')
             x0, y0, z0 = bounds[:,0]
@@ -98,13 +183,18 @@ class Visualise_Sim(object):
             #TODO account for other corners of box?
             all_array = np.concatenate([r_array,vectors])
          
-        #atoms
-        rends.append(v.add_renderer(AtomRenderer, r_array, type_array))            
+        #atoms renderer
+        backend = 'impostors' if spheres else 'points'
+        rends.append(v.add_renderer(AtomRenderer, r_array, type_array,
+                    color_scheme=self._atomcolors, radii_map=self._atomradii,
+                    backend=backend))            
         
         # transfrom coordinate system
         w.camera.orbit_x(xrot*np.pi/180.)
         w.camera.orbit_y(yrot*np.pi/180.)
+        w.camera.orbit_z(zrot*np.pi/180.)
         
+        # axes renderer
         if show_axes:
             # find top-left coordinate after transformations and 
             # convert to original coordinate system
@@ -130,12 +220,13 @@ class Visualise_Sim(object):
                 colors = [[color, color],[color, color]]
                 #TODO add as arrows instead of lines 
                 rends.append(v.add_renderer(LineRenderer, startends, colors))
-                #TODO add x,y,z labels (look at graphics __init__)
+                #TODO add x,y,z labels (look at chemlab.graphics.__init__)
 
         w.camera.autozoom(all_array)
 
         # convert scene to image
         image = w.toimage(width, height)
+        image = self._trim_image(image)
         b = BytesIO()
         image.save(b, format='png')
         data = b.getvalue()
