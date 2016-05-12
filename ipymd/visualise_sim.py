@@ -200,7 +200,7 @@ class Visualise_Sim(object):
         rotx: rotation about x (degrees)
         roty: rotation about y (degrees)
         rotz: rotation about z (degrees)
-        (x,y,z = red,gree,blue)
+        (start x-axis horizontal, y-axis vertical)
         
         Return
         ------
@@ -212,7 +212,7 @@ class Visualise_Sim(object):
         r_array = self._unit_conversion(r_array, 'distance')
         all_array = r_array
         
-        type_array = [type_dict.get(s['type'], 'Xx') for i,s in atoms_df.iterrows()]
+        type_array = [type_dict.get(s['type'], s['type']) for i,s in atoms_df.iterrows()]
 
         # initialize graphic engine
         v = QtViewer()
