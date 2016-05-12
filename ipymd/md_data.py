@@ -58,9 +58,12 @@ class LAMMPS_Data(MD_Data):
         dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
     """
-    def __init__(self, sys_path='', atom_path=''):
+    def __init__(self, sys_path='', atom_path='', unscale_coords=True):
         """
-        atom_path
+        unscale_coords : bool
+            By default, atom coords are written in a scaled format (from 0 to 1), 
+            i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
+            distance from xlo to xhi of the box boundaries. 
         """
         assert os.path.exists(sys_path) or not sys_path, 'sys_path does not exist'
         self._sys_path = sys_path
@@ -122,11 +125,11 @@ class LAMMPS_Data(MD_Data):
         line = skiplines(f, 2)
         num_atoms = int(line.split()[0])
         line = skiplines(f, 2)
-        x_lims = [float(line.split()[0]), float(line.split()[1])]
+        x0, x1 = [float(line.split()[0]), float(line.split()[1])]
         line = skiplines(f, 1)
-        y_lims = [float(line.split()[0]), float(line.split()[1])]
+        y0, y1 = [float(line.split()[0]), float(line.split()[1])]
         line = skiplines(f, 1)
-        z_lims = [float(line.split()[0]), float(line.split()[1])]
+        z0, z1 = [float(line.split()[0]), float(line.split()[1])]
         line = skiplines(f, 1)
         headers = line.split()[2:]
         atoms = []
@@ -135,7 +138,15 @@ class LAMMPS_Data(MD_Data):
             atoms.append(np.array(line.split(),dtype=float))
         atoms_df = pd.DataFrame(atoms, columns=headers)
         
-        return atoms_df, time, np.array([x_lims, y_lims, z_lims])
+        self._unscale_coords(atoms_df, x0, x1, y0, y1, z0, z1)        
+        
+        return atoms_df, time, np.array([[x0,x1], [y0,y1], [z0,z1]])
+        
+    def _unscale_coords(self, atoms_df, x0, x1, y0, y1, z0, z1):
+        
+        atoms_df['xs'] = atoms_df['xs'] * abs(x1-x0) + x0
+        atoms_df['ys'] = atoms_df['ys'] * abs(y1-y0) + y0
+        atoms_df['zs'] = atoms_df['zs'] * abs(z1-z0) + z0
         
     def count_timesteps(self):
         if not self._single_atom_file:
