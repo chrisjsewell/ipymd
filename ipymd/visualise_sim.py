@@ -57,7 +57,7 @@ class Visualise_Sim(object):
         
     def visualise(self, atoms_df, type_dict={}, bounds=None, 
                   xrot=0, yrot=0, fov=10., 
-                  show_axes=True, axes_offset=(-0.2,0.2),
+                  show_axes=True, axes_offset=(-0.2,0.2), axes_length=1,
                   width=400, height=400):
         """ 
         rotx: rotation about x 
@@ -68,7 +68,7 @@ class Visualise_Sim(object):
         assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
         r_array = np.array([s[['xs','ys','zs']] for i,s in atoms_df.iterrows()])
         r_array = self._unit_conversion(r_array, 'distance')
-        
+        all_array = r_array
         
         type_array = [type_dict.get(s['type'], 'Xx') for i,s in atoms_df.iterrows()]
 
@@ -78,7 +78,7 @@ class Visualise_Sim(object):
         w.initializeGL()
         w.camera.fov = fov
 
-        # add renderers
+        ## add renderers
         rends = []
 
         #simulation bounding box
@@ -95,24 +95,19 @@ class Visualise_Sim(object):
             vectors = np.array([[x1-x0,0,0],[0,y1-y0,0],[0,0,z1-z0]])
             rends.append(v.add_renderer(BoxRenderer, vectors))
             
-        rends.append(v.add_renderer(AtomRenderer, r_array, type_array))            
-        
-        if not bounds is None:
             #TODO account for other corners of box?
             all_array = np.concatenate([r_array,vectors])
-        else:
-            all_array = r_array
-
+         
+        #atoms
+        rends.append(v.add_renderer(AtomRenderer, r_array, type_array))            
+        
+        # transfrom coordinate system
         w.camera.orbit_x(xrot*np.pi/180.)
         w.camera.orbit_y(yrot*np.pi/180.)
         
         if show_axes:
-            # find top-left 'origin' after transformations 
-
-            # fyi there is this function but doesn't work
-            # w.camera.unproject(-1.0, 1.0)
-            
-            axes_length = 1
+            # find top-left coordinate after transformations and 
+            # convert to original coordinate system
             
             ones = np.ones((all_array.shape[0],1))
             trans_array = np.apply_along_axis(w.camera.matrix.dot,1,np.concatenate((all_array,ones),axis=1))[:,[0,1,2]]
@@ -121,7 +116,6 @@ class Visualise_Sim(object):
                           trans_array[:,2].min(), 1]
             
             x0, y0, z0 = np.linalg.inv(w.camera.matrix).dot(t_top_left)[0:3]
-
             origin = [x0, y0, z0]
             all_array = np.concatenate([all_array, [origin]])
             
@@ -133,7 +127,9 @@ class Visualise_Sim(object):
                 # for some reason it won't render if theres not a 'dummy' 2nd element
                 startends = [[origin, vector],[origin, vector]]                      
                 colors = [[color, color],[color, color]]
+                #TODO add as arrows instead of lines 
                 rends.append(v.add_renderer(LineRenderer, startends, colors))
+                #TODO add x,y,z labels (look at graphics __init__)
 
         w.camera.autozoom(all_array)
 
