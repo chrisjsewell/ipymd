@@ -14,6 +14,7 @@ It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest
 
 ## Example Output
 
+
 ```python
 %matplotlib inline
 from ipymd.md_data import LAMMPS_Data
@@ -229,7 +230,10 @@ atom_data.head()
 
 ```python
 vis = Visualise_Sim()
-vis.visualise(atom_data,type_dict={1:'Fe'},bounds=bounds,xrot=45,yrot=45, show_axes=True,axes_offset=(1.,0))
+
+images = [vis.get_image(atom_data,type_dict={1:'Fe'},
+         bounds=bounds,xrot=xrot,yrot=45) for xrot in [0,45,90]]
+vis.visualise(images, columns=2)
 ```
 
 

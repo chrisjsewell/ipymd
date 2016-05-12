@@ -12,6 +12,8 @@ from chemlab.graphics.qtviewer import QtViewer
 from chemlab.graphics.renderers.atom import AtomRenderer
 from chemlab.graphics.renderers.box import BoxRenderer
 from chemlab.graphics.renderers.line import LineRenderer
+#from chemlab.graphics.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
+#                                             OutlineEffect, SSAOEffect)
 from chemlab.graphics.colors import get as str_to_colour
 from chemlab.graphics import colors as chemlab_colors
 from chemlab.db import ChemlabDB
@@ -30,7 +32,6 @@ def orbit_z(self, angle):
     self.c = np.dot(rot, self.c)     
 from chemlab.graphics.camera import Camera
 Camera.orbit_z = orbit_z
-
 
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops
@@ -135,19 +136,76 @@ class Visualise_Sim(object):
         if bbox:
             return im.crop(bbox)
 
-    def visualise(self, atoms_df, type_dict={}, bounds=None, spheres=True, 
+    def _concat_images_horizontal(self, images, gap=10, background='white'):
+        """ concatentate one or more PIL images horizontally 
+
+        Parameters
+        ----------
+        images : PIL.Image list
+            the images to concatenate
+        gap : int
+            the pixel gap between images
+        background : PIL.ImageColor
+            background color (as supported by PIL.ImageColor)
+        """
+        if len(images) == 1: return images[0]
+        
+        total_width = sum([img.size[0] for img in images]) + len(images)*gap
+        max_height = max([img.size[1] for img in images])
+        
+        final_img = Image.new("RGBA", (total_width, max_height), color=background)
+        
+        horizontal_position = 0
+        for img in images:
+            final_img.paste(img, (horizontal_position, 0))
+            horizontal_position += img.size[0] + gap
+        
+        return final_img
+
+    def _concat_images_vertical(self, images, gap=10, background='white'):
+        """ concatentate one or more PIL images vertically 
+
+        Parameters
+        ----------
+        images : PIL.Image list
+            the images to concatenate
+        gap : int
+            the pixel gap between images
+        """
+        if len(images) == 1: return images[0]
+        
+        total_width = max([img.size[0] for img in images]) 
+        max_height = sum([img.size[1] for img in images]) + len(images)*gap
+        
+        final_img = Image.new("RGBA", (total_width, max_height), color=background)
+        
+        vertical_position = 0
+        for img in images:
+            final_img.paste(img, (0, vertical_position))
+            vertical_position += img.size[1] + gap
+        
+        return final_img
+
+    def get_image(self, atoms_df, type_dict={}, bounds=None, spheres=True, 
                   xrot=0, yrot=0, zrot=0, fov=10., 
                   show_axes=True, axes_offset=(-0.2,0.2), axes_length=1,
                   width=400, height=400):
-        """ 
+        """ get image of atom configuration
+        
+        Parameters
+        ----------
         bounds : np.array((3,2), dtype=float)
             simulation box
         sphere : render spheres, otherwise points
         rotx: rotation about x (degrees)
         roty: rotation about y (degrees)
         rotz: rotation about z (degrees)
-        (start x-axis horizontal, y-axis vertical)
+        (x,y,z = red,gree,blue)
         
+        Return
+        ------
+        image : PIL.Image
+
         """
         assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
         r_array = np.array([s[['xs','ys','zs']] for i,s in atoms_df.iterrows()])
@@ -158,7 +216,9 @@ class Visualise_Sim(object):
 
         # initialize graphic engine
         v = QtViewer()
-        w = v.widget 
+        w = v.widget
+        #TODO could add option to change background, but should also have simulation box change
+        w.background_color = str_to_colour('white')
         w.initializeGL()
         w.camera.fov = fov
 
@@ -227,9 +287,6 @@ class Visualise_Sim(object):
         # convert scene to image
         image = w.toimage(width, height)
         image = self._trim_image(image)
-        b = BytesIO()
-        image.save(b, format='png')
-        data = b.getvalue()
 
         # Cleanup
         for r in rends:
@@ -237,4 +294,40 @@ class Visualise_Sim(object):
         del v
         del w
         
+        return image
+        
+    def visualise(self, images, columns=1): 
+        """ visualise image(s) in IPython
+        
+        Parameters
+        ----------
+        images : list or single PIL.Image
+        columns : int
+            number of image columns 
+        
+        Returns
+        -------
+        image : IPython.display.Image
+
+        """        
+        try:
+            img_iter = iter(images)
+        except TypeError:
+            img_iter = iter([images])
+        
+        img_columns = []
+        img_rows = []
+        for image in img_iter: 
+            if len(img_columns) < columns:
+                img_columns.append(image)
+            else:
+                img_rows.append(self._concat_images_horizontal(img_columns))
+                img_columns = [image]
+        if img_columns:
+            img_rows.append(self._concat_images_horizontal(img_columns))
+        image = self._concat_images_vertical(img_rows)
+        
+        b = BytesIO()
+        image.save(b, format='png')
+        data = b.getvalue()
         return ipy_Image(data=data)
