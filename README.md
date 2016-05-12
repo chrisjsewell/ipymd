@@ -1,4 +1,4 @@
-# IPython Molecular Dynamics Package (ipymd)
+# IPython Molecular Dynamics Analysis (ipymd)
 Analysis of Molecular Dynamics output in the IPython Notebook
 
 ![png](images/small_sim.png)
