@@ -19,15 +19,14 @@ It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest
 
 ```python
 %matplotlib inline
-from ipymd.md_data import LAMMPS_Data
-from ipymd.visualise_sim import Visualise_Sim
+import ipymd
 ```
 
 
 ```python
-data = LAMMPS_Data(
-    sys_path='ipymd/lammps_test_data/system.dump',
-    atom_path='ipymd/lammps_test_data/atom_dump/atoms_*.dump')
+data = ipymd.md_data.LAMMPS_Data(
+    sys_path=ipymd.get_test_path('system.dump'),
+    atom_path=ipymd.get_test_path(['atom_dump','atoms_*.dump']))
 ```
 
 
@@ -147,8 +146,9 @@ ax.set_ylabel('Temperature (K)');
 
 
 ```python
-atom_data, time_step, bounds = data.get_atom_data(98)
-print time_step
+print data.get_atom_timestep(98)
+atom_data = data.get_atom_data(98)
+sim_box = data.get_simulation_box(98)
 atom_data.head()
 ```
 
@@ -231,10 +231,12 @@ atom_data.head()
 
 
 ```python
-vis = Visualise_Sim()
+vis = ipymd.visualise_sim.Visualise_Sim()
 
-images = [vis.get_image(atom_data,type_dict={1:'Fe'},
-         bounds=bounds,xrot=xrot,yrot=45) for xrot in [0,45,90]]
+images = [vis.get_image(atom_data,sim_box,type_dict={1:'Fe'},
+         xrot=xrot,yrot=45) for xrot in [0,45,90]]
+images.append(vis.get_image(atom_data,sim_box,type_dict={1:'Fe'},
+                        xrot=45,yrot=45,spheres=False))
 vis.visualise(images, columns=2)
 ```
 

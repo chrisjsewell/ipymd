@@ -153,8 +153,8 @@ class LAMMPS_Data(MD_Data):
         atoms_df['ys'] = atoms_df['ys'] * abs(y1-y0) + y0
         atoms_df['zs'] = atoms_df['zs'] * abs(z1-z0) + z0
 
-    def get_atom_time(self, step):
-        """ return time of simulation, according to atom data """
+    def get_atom_timestep(self, step):
+        """ return simulation step, according to atom data """
         if self._single_atom_file:
             current_step = 0
             with open(self._atom_path, 'r') as f:
@@ -224,6 +224,8 @@ class LAMMPS_Data(MD_Data):
 
     def _extract_simulation_box(self, f):
         """ """
+        xy, xz, yz = 0., 0., 0.
+        
         line = self._skiplines(f, 1) # to time
         line = self._skiplines(f, 2) # to nummper of atoms
         line = self._skiplines(f, 2) # to simulation box

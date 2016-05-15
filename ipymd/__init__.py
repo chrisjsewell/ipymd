@@ -4,14 +4,14 @@ Created on Sun May  1 22:46:22 2016
 
 @author: cjs14
 """
-
+# so tab completion works
 from . import md_data
 from . import visualise_sim
 
 import os
 import inspect
 from . import test_data
-def get_test_path(data):
+def get_test_path(data, check_exists=False):
     """return a directory path to the test data
 
     data : str or list of str
@@ -23,6 +23,7 @@ def get_test_path(data):
     
     dirpath = os.path.join(basepath, *data)
     
-    assert os.path.exists(dirpath), '{0} does not exist'.format(dirpath)
+    if check_exists:
+        assert os.path.exists(dirpath), '{0} does not exist'.format(dirpath)
     
     return dirpath
