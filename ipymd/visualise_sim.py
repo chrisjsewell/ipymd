@@ -186,16 +186,20 @@ class Visualise_Sim(object):
         
         return final_img
 
-    def get_image(self, atoms_df, type_dict={}, bounds=None, spheres=True, 
+    def get_image(self, atoms_df, sim_box=None, type_dict={}, spheres=True, 
                   xrot=0, yrot=0, zrot=0, fov=10., 
                   show_axes=True, axes_offset=(-0.2,0.2), axes_length=1,
                   width=400, height=400):
         """ get image of atom configuration
         
+        requires atoms to have, at least variables xs, yx, zs and type
+        
         Parameters
         ----------
-        bounds : np.array((3,2), dtype=float)
-            simulation box
+        atom_df : pandas.DataFrame
+            a dataframe of variables for each atom
+        sim_bounds : np.array((6,3), dtype=float)
+            list of coordinates for simulation bounds [x0,y0,z0,a,b,c]
         sphere : render spheres, otherwise points
         rotx: rotation about x (degrees)
         roty: rotation about y (degrees)
@@ -227,17 +231,15 @@ class Visualise_Sim(object):
         rends = []
 
         #simulation bounding box render
-        if not bounds is None:
-            bounds = self._unit_conversion(bounds, 'distance')
-            x0, y0, z0 = bounds[:,0]
-            x1, y1, z1 = bounds[:,1]
-            
+        if not sim_box is None:
+            sim_box = self._unit_conversion(sim_box, 'distance')
+
             # move r_array so origin is at (0,0,0)
-            r_array[:,0] = r_array[:,0] - x0           
-            r_array[:,1] = r_array[:,1] - y0           
-            r_array[:,2] = r_array[:,2] - z0           
+            r_array[:,0] = r_array[:,0] - sim_box[0,0]           
+            r_array[:,1] = r_array[:,1] - sim_box[1,1]            
+            r_array[:,2] = r_array[:,2] - sim_box[2,2]           
             
-            vectors = np.array([[x1-x0,0,0],[0,y1-y0,0],[0,0,z1-z0]])
+            vectors = sim_box[3:6]
             rends.append(v.add_renderer(BoxRenderer, vectors))
             
             #TODO account for other corners of box?
@@ -255,13 +257,14 @@ class Visualise_Sim(object):
         w.camera.orbit_z(zrot*np.pi/180.)
         
         # axes renderer
+        # TODO option to show a,b,c instead of x,y,z
         if show_axes:
             # find top-left coordinate after transformations and 
             # convert to original coordinate system
             
             ones = np.ones((all_array.shape[0],1))
             trans_array = np.apply_along_axis(w.camera.matrix.dot,1,np.concatenate((all_array,ones),axis=1))[:,[0,1,2]]
-            t_top_left = [trans_array[:,0].min() + axes_offset[0] - axes_length, 
+            t_top_left = [trans_array[:,0].min() + axes_offset[0], 
                           trans_array[:,1].max() + axes_offset[1], 
                           trans_array[:,2].min(), 1]
             
@@ -280,7 +283,7 @@ class Visualise_Sim(object):
                 colors = [[color, color],[color, color]]
                 #TODO add as arrows instead of lines 
                 rends.append(v.add_renderer(LineRenderer, startends, colors))
-                #TODO add x,y,z labels (look at chemlab.graphics.__init__)
+                #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
         w.camera.autozoom(all_array)
 
