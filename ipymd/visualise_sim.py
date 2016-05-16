@@ -170,17 +170,6 @@ class Visualise_Sim(object):
         self._axes_offset = offset
         self._axes_colors = [str_to_colour(col) for col in colors]
 
-    def add_repeated_cells(self, atom_df, vectors, repetitions=(1,1,1),
-                          type_map={}, spheres=True, alpha=1.):
-        """ add repeated atoms """
-        
-        for i in range(repetitions[0]+1):
-            for j in range(repetitions[1]+1):
-                for k in range(repetitions[2]+1):
-                    atom_copy = atom_df.copy()
-                    atom_copy[['xs','ys','zs']] = atom_copy[['xs','ys','zs']] + i*vectors[0]  + j*vectors[1] + k*vectors[2]
-                    self.add_atoms(atom_copy, type_map=type_map, spheres=spheres, alpha=alpha)
-            
     def _unit_conversion(self, values, measure):
         """ 
         values : np.array 

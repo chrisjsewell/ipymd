@@ -7,6 +7,7 @@ Created on Sun May  1 22:46:22 2016
 # so tab completion works
 from . import data_input
 from . import visualise_sim
+from . import atom_manipulation
 
 import os
 import inspect
