@@ -78,6 +78,9 @@ class Visualise_Sim(object):
         self.change_atom_radiimap()
         self._atoms = []
         self._boxes = []
+        self._axes = None
+        self._axes_offset = None
+        self._axes_colors = None
         
     def change_atom_colormap(self, colormap=None, colorstrs=False):
         """
@@ -134,7 +137,7 @@ class Visualise_Sim(object):
         
         assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
 
-        self._atoms.append([r_array, type_array, backend, alpha])   
+        self._atoms.append([r_array.copy(), type_array, backend, alpha])   
         
     def add_box(self, vectors, origin=np.zeros(3), color='black'):
         """ add wireframed box to visualisation
@@ -147,12 +150,37 @@ class Visualise_Sim(object):
           the color of the wireframe
           
         """
-        vectors = self._unit_conversion(vectors, 'distance')
-        origin = self._unit_conversion(origin, 'distance')
+        vectors = self._unit_conversion(vectors.copy(), 'distance')
+        origin = self._unit_conversion(origin.copy(), 'distance')
         color = str_to_colour(color)
         
         self._boxes.append([vectors, origin, color])
 
+    def add_axes(self, axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), 
+                 length=1., offset=(-1.2,0.2), colors=('red','green','blue')):
+        """ add axes 
+
+        axes : np.array(3,3)
+            to turn off axes, set to None
+        axes_offset : tuple
+            x, y offset from top top-left atom
+        
+        """
+        self._axes = length*axes/np.linalg.norm(axes, axis=1)
+        self._axes_offset = offset
+        self._axes_colors = [str_to_colour(col) for col in colors]
+
+    def add_repeated_cells(self, atom_df, vectors, repetitions=(1,1,1),
+                          type_map={}, spheres=True, alpha=1.):
+        """ add repeated atoms """
+        
+        for i in range(repetitions[0]+1):
+            for j in range(repetitions[1]+1):
+                for k in range(repetitions[2]+1):
+                    atom_copy = atom_df.copy()
+                    atom_copy[['xs','ys','zs']] = atom_copy[['xs','ys','zs']] + i*vectors[0]  + j*vectors[1] + k*vectors[2]
+                    self.add_atoms(atom_copy, type_map=type_map, spheres=spheres, alpha=alpha)
+            
     def _unit_conversion(self, values, measure):
         """ 
         values : np.array 
@@ -232,9 +260,7 @@ class Visualise_Sim(object):
         
         return final_img
 
-    def get_image(self, xrot=0, yrot=0, zrot=0, fov=10., 
-                  show_axes=True, axes_offset=(-1.2,0.2), axes_length=1,
-                  width=400, height=400):
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=10., width=400, height=400):
         """ get image of atom configuration
         
         requires atoms to have, at least variables xs, yx, zs and type
@@ -302,14 +328,14 @@ class Visualise_Sim(object):
         
         # axes renderer
         # TODO option to show a,b,c instead of x,y,z
-        if show_axes:
+        if self._axes is not None:
             # find top-left coordinate after transformations and 
             # convert to original coordinate system
             
             ones = np.ones((all_array.shape[0],1))
             trans_array = np.apply_along_axis(w.camera.matrix.dot,1,np.concatenate((all_array,ones),axis=1))[:,[0,1,2]]
-            t_top_left = [trans_array[:,0].min() + axes_offset[0], 
-                          trans_array[:,1].max() + axes_offset[1], 
+            t_top_left = [trans_array[:,0].min() + self._axes_offset[0], 
+                          trans_array[:,1].max() + self._axes_offset[1], 
                           trans_array[:,2].min(), 1]
 
             x0, y0, z0 = np.linalg.inv(w.camera.matrix).dot(t_top_left)[0:3]
@@ -317,12 +343,8 @@ class Visualise_Sim(object):
            
             all_array = np.concatenate([all_array, [origin]])
             
-            vectors = [[x0+axes_length,y0,z0], 
-                       [x0,y0+axes_length,z0], 
-                       [x0,y0,z0+axes_length]]
-            # colors consistent with ovito
-            colors = [str_to_colour('red'),str_to_colour('green'),str_to_colour('blue')]
-            for vector, color in zip(vectors, colors):
+            vectors = self._axes + origin
+            for vector, color in zip(vectors, self._axes_colors):
                 # for some reason it won't render if theres not a 'dummy' 2nd element
                 startends = [[origin, vector],[origin, vector]]                      
                 colors = [[color, color],[color, color]]
@@ -383,20 +405,22 @@ class Visualise_Sim(object):
     def basic_vis(self, atoms_df=None, sim_box=None, type_map={}, 
                   spheres=True, alpha=1, 
                   xrot=0, yrot=0, zrot=0, fov=10.,
-                  show_axes=True, axes_offset=(-1.2,0.2), axes_length=1,
+                  axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), axes_length=1., axes_offset=(-1.2,0.2),
                   width=400, height=400):
         """ basic visualisation
         
-        invoking add_atoms, add_box (if sim_box), get_image and visualise functions
+        invoking add_atoms, add_box (if sim_box), add_axes, get_image and visualise functions
         
         """
         if not atoms_df is None:
-            self.add_atoms(atoms_df, type_map, spheres, alpha)
+            self.add_atoms(atoms_df, type_map=type_map, spheres=spheres, alpha=alpha)
         if not sim_box is None:
-            self.add_box(sim_box[1:4], sim_box[0])
+            self.add_box(sim_box[0], sim_box[1])
+        if not axes is None:
+            self.add_axes(axes=axes, length=axes_length, offset=axes_offset)
             
-        image = self.get_image(xrot, yrot, zrot, fov, 
-                               show_axes, axes_offset, axes_length, width, height)
+        image = self.get_image(xrot=xrot, yrot=yrot, zrot=zrot, fov=fov, 
+                               width=width, height=height)
         
         # cleanup
         self._atoms.pop()

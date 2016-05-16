@@ -83,7 +83,7 @@ class LAMMPS_Input(DataInput):
         return atom_df
     
     def get_simulation_box(self):
-        """ return list of coordinates [origin,a,b,c] """
+        """ return list of coordinates (np.array(3)) for origin and [a,b,c] """
         xy, xz, yz = 0., 0., 0.
         with open(self._atom_path, 'r') as f:
             for line in f:
@@ -110,8 +110,7 @@ class LAMMPS_Input(DataInput):
                     xy, xz, yz = float(line.split()[0]), float(line.split()[1]), float(line.split()[2])
                     continue
                     
-        return np.array([[xlo,ylo,zlo],
-                         [xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]])
+        return np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]]), np.array([xlo,ylo,zlo])
 
 def natural_keys(text):
     '''
@@ -269,8 +268,8 @@ class LAMMPS_Output(DataInput):
         return time
         
     def get_simulation_box(self, step):
-        """ return list of coordinates [x0,y0,z0,a,b,c] """
-        if self._single_atom_file:
+       """ return list of coordinates (np.array(3)) for origin and [a,b,c] """
+       if self._single_atom_file:
             current_step = 0
             with open(self._atom_path, 'r') as f:
                 for line in f:
@@ -289,7 +288,7 @@ class LAMMPS_Output(DataInput):
                                                         step, current_step-1))
             else:
                 raise IOError("atom file of wrong format")
-        else:
+       else:
             if len(self._atom_path)-1 < step:
                 raise IOError("timestep {0} exceeds maximum ({1})".format
                                                 (step, len(self._atom_path)-1))
@@ -318,8 +317,7 @@ class LAMMPS_Output(DataInput):
         if len(line.split()) == 3:
             yz = float(line.split()[2])
         
-        return np.array([[xlo,ylo,zlo],
-                         [xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]])
+        return np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]]), np.array([xlo,ylo,zlo])
 
     def count_timesteps(self):
         if not self._single_atom_file:

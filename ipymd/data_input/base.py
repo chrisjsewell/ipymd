@@ -23,7 +23,7 @@ class DataInput(object):
         """ return pandas.DataFrame """
         raise NotImplemented
     def get_simulation_box(self, step):
-        """ return list of coordinates [origin,a,b,c] """
+        """ return list of coordinates (np.array(3)) for [a,b,c] & origin"""
         raise NotImplemented
         
     def count_timesteps(self):

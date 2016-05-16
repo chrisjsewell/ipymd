@@ -72,7 +72,7 @@ class Crystal(DataInput):
         # Unit cell parameters
         a,b,c = cellpar_to_cell(cellpar) * 10.
         
-        self._sim_box = np.array([[0.,0.,0.], a*nx, b*ny, c*nz])
+        self._sim_box = (np.array([a*nx, b*ny, c*nz]),np.array([0.,0.,0.]))
         
         for rx in range(nx):
             for ry in range(ny):
@@ -90,6 +90,6 @@ class Crystal(DataInput):
         return self._atoms
 
     def get_simulation_box(self):
-        """ return list of coordinates [origin,a,b,c] """
+        """ return list of coordinates origin & [a,b,c] """
         return self._sim_box
 
