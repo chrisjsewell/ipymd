@@ -9,7 +9,6 @@ from io import BytesIO
 import numpy as np
 
 from chemlab.graphics.qtviewer import QtViewer
-from chemlab.graphics.renderers.box import BoxRenderer
 from chemlab.graphics.renderers.line import LineRenderer
 #from chemlab.graphics.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
 #                                             OutlineEffect, SSAOEffect)
@@ -37,6 +36,9 @@ from PIL import Image, ImageChops
 
 # in order to set atoms as transparent
 from .chemlab_patch.atom import AtomRenderer
+from .chemlab_patch.triangle import TriangleRenderer
+from .chemlab_patch.box import BoxRenderer
+from .chemlab_patch.hexagon import HexagonRenderer
 
 class Visualise_Sim(object):
     """ 
@@ -76,11 +78,13 @@ class Visualise_Sim(object):
         self.change_atom_colormap()
         self._atomradii = None  
         self.change_atom_radiimap()
+        
+        # rendered objects
         self._atoms = []
         self._boxes = []
+        self._hexagons = []
         self._axes = None
-        self._axes_offset = None
-        self._axes_colors = None
+        self._triangles = []
         
     def change_atom_colormap(self, colormap=None, colorstrs=False):
         """
@@ -139,7 +143,12 @@ class Visualise_Sim(object):
 
         self._atoms.append([r_array.copy(), type_array, backend, alpha])   
         
-    def add_box(self, vectors, origin=np.zeros(3), color='black'):
+    def remove_atoms(self, n=1):
+        """ remove the last n sets of atoms to be added """
+        assert len(self._atoms) >= n
+        self._atoms = self._atoms[:-n]
+        
+    def add_box(self, vectors, origin=np.zeros(3), color='black', width=1):
         """ add wireframed box to visualisation
         
        vectors : np.ndarray((3,3), dtype=float)
@@ -147,17 +156,45 @@ class Visualise_Sim(object):
        origin : np.ndarray((3,3), dtype=float), default to zero
           The origin of the box.
         color : str
-          the color of the wireframe
+          the color of the wireframe, in chemlab colors
           
         """
         vectors = self._unit_conversion(vectors.copy(), 'distance')
         origin = self._unit_conversion(origin.copy(), 'distance')
         color = str_to_colour(color)
         
-        self._boxes.append([vectors, origin, color])
+        self._boxes.append([vectors, origin, color, width])
+
+    def remove_boxes(self, n=1):
+        """ remove the last n boxes to be added """
+        assert len(self._boxes) >= n
+        self._boxes = self._boxes[:-n]
+
+    def add_hexagon(self, vectors, origin=np.zeros(3), color='black', width=1):
+        """ add wireframed hexagonal prism to visualisation
+        
+       vectors : np.ndarray((2,3), dtype=float)
+          The three vectors representing the orthogonal, a,c lattices.
+       origin : np.ndarray((3,3), dtype=float), default to zero
+          The origin of the box.
+        color : str
+          the color of the wireframe, in chemlab colors
+          
+        """
+        vectors = self._unit_conversion(vectors.copy(), 'distance')
+        origin = self._unit_conversion(origin.copy(), 'distance')
+        color = str_to_colour(color)
+        
+        self._hexagons.append([vectors, origin, color, width])
+
+    def remove_hexagons(self, n=1):
+        """ remove the last n boxes to be added """
+        assert len(self._hexagons) >= n
+        self._hexagons = self._hexagons[:-n]
 
     def add_axes(self, axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), 
-                 length=1., offset=(-1.2,0.2), colors=('red','green','blue')):
+                 length=1., offset=(-1.2,0.2), colors=('red','green','blue'),
+                 width=1.5):
         """ add axes 
 
         axes : np.array(3,3)
@@ -166,9 +203,45 @@ class Visualise_Sim(object):
             x, y offset from top top-left atom
         
         """
-        self._axes = length*axes/np.linalg.norm(axes, axis=1)
-        self._axes_offset = offset
-        self._axes_colors = [str_to_colour(col) for col in colors]
+        self._axes = [length*axes/np.linalg.norm(axes, axis=1), width,
+                      offset, [str_to_colour(col) for col in colors]]
+
+    def add_plane(self, vectors, origin=np.zeros(3), rev_normal=False, 
+                  color='red', alpha=1.):
+        """ add flat plane to visualisation
+        
+       vectors : np.ndarray((2,3), dtype=float)
+          The three vectors representing the edges of the plane.
+       origin : np.ndarray((3,3), dtype=float), default to zero
+          The origin of the plane.
+       rev_normal : bool
+           whether to reverse direction of normal (for lighting calculations)
+       color : str
+          the color of the plane, in chemlab colors
+          
+        """
+        vectors = self._unit_conversion(vectors.copy(), 'distance')
+        origin = self._unit_conversion(origin.copy(), 'distance')
+
+        c = str_to_colour(color)
+        colors = np.array([c,c,c,c,c,c])
+        assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
+        
+        n = np.cross(vectors[0], vectors[1])
+        if rev_normal:
+            n = -n
+        n = n / np.linalg.norm(n)
+        normals = np.array([n,n,n,n,n,n])
+        
+        vertices = np.array([origin,vectors[0]+origin,vectors[1]+origin,
+                             vectors[0]+origin,vectors[0]+vectors[1]+origin,vectors[1]+origin])
+        
+        self._triangles.append([vertices, normals, colors, alpha])
+    
+    def remove_planes(self, n=1):
+        """ remove the last n planes to be added """
+        assert len(self._triangles) >= n
+        self._triangles = self._triangles[:-n]
 
     def _unit_conversion(self, values, measure):
         """ 
@@ -295,13 +368,33 @@ class Visualise_Sim(object):
                         backend=backend, transparent=transparent) 
             all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
-        #simulation bounding box render
-        for vectors, origin, color in self._boxes:
-            v.add_renderer(BoxRenderer,vectors,origin,
-                                        color=color)           
+        #boxes render
+        for box_vectors, box_origin, box_color, box_width in self._boxes:
+            v.add_renderer(BoxRenderer,box_vectors,box_origin,
+                           color=box_color, width=box_width)           
             #TODO account for other corners of box?
-            b_array = vectors+origin                           
+            b_array = box_vectors + box_origin                           
             all_array = b_array if all_array is None else np.concatenate([all_array,b_array])
+
+        #hexagonal prism render
+        for hex_vectors, hex_origin, hex_color, hex_width in self._hexagons:
+            v.add_renderer(HexagonRenderer,hex_vectors,hex_origin,
+                           color=hex_color, width=hex_width)           
+            #TODO account for other vertices of hexagon?
+            h_array = hex_vectors + hex_origin                           
+            all_array = h_array if all_array is None else np.concatenate([all_array,h_array])
+
+        #surfaces render
+        for vertices, normals, colors, alpha in self._triangles:
+            if alpha < 1.:
+                transparent = True
+                colors[:,3] = int(alpha*255)
+            else:
+                transparent = False
+            v.add_renderer(TriangleRenderer,vertices, normals, colors, 
+                           transparent=transparent)           
+            all_array = vertices if all_array is None else np.concatenate([all_array,vertices])
+
         ## ----------------------------
 
         if all_array is None:
@@ -318,13 +411,15 @@ class Visualise_Sim(object):
         # axes renderer
         # TODO option to show a,b,c instead of x,y,z
         if self._axes is not None:
+            axes, axes_width, axes_offset, axes_colors = self._axes          
+            
             # find top-left coordinate after transformations and 
             # convert to original coordinate system
             
             ones = np.ones((all_array.shape[0],1))
             trans_array = np.apply_along_axis(w.camera.matrix.dot,1,np.concatenate((all_array,ones),axis=1))[:,[0,1,2]]
-            t_top_left = [trans_array[:,0].min() + self._axes_offset[0], 
-                          trans_array[:,1].max() + self._axes_offset[1], 
+            t_top_left = [trans_array[:,0].min() + axes_offset[0], 
+                          trans_array[:,1].max() + axes_offset[1], 
                           trans_array[:,2].min(), 1]
 
             x0, y0, z0 = np.linalg.inv(w.camera.matrix).dot(t_top_left)[0:3]
@@ -332,13 +427,13 @@ class Visualise_Sim(object):
            
             all_array = np.concatenate([all_array, [origin]])
             
-            vectors = self._axes + origin
-            for vector, color in zip(vectors, self._axes_colors):
+            vectors = axes + origin
+            for vector, color in zip(vectors, axes_colors):
                 # for some reason it won't render if theres not a 'dummy' 2nd element
                 startends = [[origin, vector],[origin, vector]]                      
                 colors = [[color, color],[color, color]]
                 #TODO add as arrows instead of lines 
-                v.add_renderer(LineRenderer, startends, colors)
+                v.add_renderer(LineRenderer, startends, colors, width=axes_width)
                 #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
         w.camera.autozoom(all_array)
@@ -396,7 +491,7 @@ class Visualise_Sim(object):
                   xrot=0, yrot=0, zrot=0, fov=10.,
                   axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), axes_length=1., axes_offset=(-1.2,0.2),
                   width=400, height=400):
-        """ basic visualisation
+        """ basic visualisation shortcut
         
         invoking add_atoms, add_box (if sim_box), add_axes, get_image and visualise functions
         
