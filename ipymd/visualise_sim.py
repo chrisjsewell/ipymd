@@ -9,7 +9,6 @@ from io import BytesIO
 import numpy as np
 
 from chemlab.graphics.qtviewer import QtViewer
-from chemlab.graphics.renderers.atom import AtomRenderer
 from chemlab.graphics.renderers.box import BoxRenderer
 from chemlab.graphics.renderers.line import LineRenderer
 #from chemlab.graphics.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
@@ -35,6 +34,9 @@ Camera.orbit_z = orbit_z
 
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops
+
+# in order to set atoms as transparent
+from .chemlab_patch.atom import AtomRenderer
 
 class Visualise_Sim(object):
     """ 
@@ -74,6 +76,8 @@ class Visualise_Sim(object):
         self.change_atom_colormap()
         self._atomradii = None  
         self.change_atom_radiimap()
+        self._atoms = []
+        self._boxes = []
         
     def change_atom_colormap(self, colormap=None, colorstrs=False):
         """
@@ -106,6 +110,48 @@ class Visualise_Sim(object):
         else:
             assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
             self._atomradii = radiimap
+        
+    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1.):
+        """ add atoms to visualisation
+
+        atoms_df : pandas.DataFrame
+            a table of atom data, must contain columns;  xs, yx, zs and type
+        type_map : dict
+            mapping of types
+        spheres : bool
+            whether the atoms are rendered as spheres or points
+        alpha : float
+            how transparent the atoms are (if spheres) 0 to 1
+        """
+        assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
+        
+        r_array = np.array(atoms_df[['xs','ys','zs']])
+        r_array = self._unit_conversion(r_array, 'distance')
+        
+        type_array = atoms_df['type'].map(lambda x: type_map.get(x,x))
+        
+        backend = 'impostors' if spheres else 'points'
+        
+        assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
+
+        self._atoms.append([r_array, type_array, backend, alpha])   
+        
+    def add_box(self, vectors, origin=np.zeros(3), color='black'):
+        """ add wireframed box to visualisation
+        
+       vectors : np.ndarray((3,3), dtype=float)
+          The three vectors representing the sides of the box.
+       origin : np.ndarray((3,3), dtype=float), default to zero
+          The origin of the box.
+        color : str
+          the color of the wireframe
+          
+        """
+        vectors = self._unit_conversion(vectors, 'distance')
+        origin = self._unit_conversion(origin, 'distance')
+        color = str_to_colour(color)
+        
+        self._boxes.append([vectors, origin, color])
 
     def _unit_conversion(self, values, measure):
         """ 
@@ -118,7 +164,7 @@ class Visualise_Sim(object):
             raise NotImplementedError
 
         return values * self._unit_dict[self._units][measure]
-        
+
     def _trim_image(self, im):
         """
         a simple solution to trim whitespace on the image
@@ -186,9 +232,8 @@ class Visualise_Sim(object):
         
         return final_img
 
-    def get_image(self, atoms_df, sim_box=None, type_dict={}, spheres=True, 
-                  xrot=0, yrot=0, zrot=0, fov=10., 
-                  show_axes=True, axes_offset=(-0.2,0.2), axes_length=1,
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=10., 
+                  show_axes=True, axes_offset=(-1.2,0.2), axes_length=1,
                   width=400, height=400):
         """ get image of atom configuration
         
@@ -196,11 +241,6 @@ class Visualise_Sim(object):
         
         Parameters
         ----------
-        atom_df : pandas.DataFrame
-            a dataframe of variables for each atom
-        sim_bounds : np.array((6,3), dtype=float)
-            list of coordinates for simulation bounds [x0,y0,z0,a,b,c]
-        sphere : render spheres, otherwise points
         rotx: rotation about x (degrees)
         roty: rotation about y (degrees)
         rotz: rotation about z (degrees)
@@ -210,47 +250,54 @@ class Visualise_Sim(object):
         ------
         image : PIL.Image
 
-        """
-        assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
-        r_array = np.array([s[['xs','ys','zs']] for i,s in atoms_df.iterrows()])
-        r_array = self._unit_conversion(r_array, 'distance')
-        all_array = r_array
-        
-        type_array = [type_dict.get(s['type'], s['type']) for i,s in atoms_df.iterrows()]
+        """        
+        # an array of all points in the image (used to calculate axes position)
+        all_array = None
 
         # initialize graphic engine
         v = QtViewer()
         w = v.widget
-        #TODO could add option to change background, but should also have simulation box change
+        #TODO could add option to change background color, but then need inversion of other colors
         w.background_color = str_to_colour('white')
         w.initializeGL()
         w.camera.fov = fov
 
-        ## add renderers
-        ## ---------------
+        ## ADD RENDERERS
+        ## ----------------------------
         rends = []
-
-        #simulation bounding box render
-        if not sim_box is None:
-            sim_box = self._unit_conversion(sim_box, 'distance')
-
-            # move r_array so origin is at (0,0,0)
-            r_array[:,0] = r_array[:,0] - sim_box[0,0]           
-            r_array[:,1] = r_array[:,1] - sim_box[1,1]            
-            r_array[:,2] = r_array[:,2] - sim_box[2,2]           
-            
-            vectors = sim_box[3:6]
-            rends.append(v.add_renderer(BoxRenderer, vectors))
-            
-            #TODO account for other corners of box?
-            all_array = np.concatenate([r_array,vectors])
          
         #atoms renderer
-        backend = 'impostors' if spheres else 'points'
-        rends.append(v.add_renderer(AtomRenderer, r_array, type_array,
-                    color_scheme=self._atomcolors, radii_map=self._atomradii,
-                    backend=backend))            
+        for r_array, type_array, backend, alpha in self._atoms:
+            if alpha < 1.:
+                transparent = True
+                cols=np.array(self._atomcolors.values())
+                cols[:,3] = int(alpha*255)
+                colormap = dict(zip(self._atomcolors.keys(), cols.tolist()))
+            else:
+                colormap = self._atomcolors
+                transparent = False
+            rends.append(v.add_renderer(AtomRenderer, r_array, type_array,
+                        color_scheme=colormap, radii_map=self._atomradii,
+                        backend=backend, transparent=transparent))  
+            all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
+        #simulation bounding box render
+        for vectors, origin, color in self._boxes:
+            rends.append(v.add_renderer(BoxRenderer,vectors,origin,
+                                        color=color))            
+            #TODO account for other corners of box?
+            b_array = vectors+origin                           
+            all_array = b_array if all_array is None else np.concatenate([all_array,b_array])
+        ## ----------------------------
+
+        if all_array is None:
+            # Cleanup
+            for r in rends:
+                del r
+            del v
+            del w            
+            raise Exception('nothing available to render')
+
         # transfrom coordinate system
         w.camera.orbit_x(xrot*np.pi/180.)
         w.camera.orbit_y(yrot*np.pi/180.)
@@ -267,9 +314,10 @@ class Visualise_Sim(object):
             t_top_left = [trans_array[:,0].min() + axes_offset[0], 
                           trans_array[:,1].max() + axes_offset[1], 
                           trans_array[:,2].min(), 1]
-            
+
             x0, y0, z0 = np.linalg.inv(w.camera.matrix).dot(t_top_left)[0:3]
             origin = [x0, y0, z0]
+           
             all_array = np.concatenate([all_array, [origin]])
             
             vectors = [[x0+axes_length,y0,z0], 
@@ -334,3 +382,27 @@ class Visualise_Sim(object):
         image.save(b, format='png')
         data = b.getvalue()
         return ipy_Image(data=data)
+
+    def basic_vis(self, atoms_df=None, sim_box=None, type_map={}, 
+                  spheres=True, alpha=1, 
+                  xrot=0, yrot=0, zrot=0, fov=10.,
+                  show_axes=True, axes_offset=(-1.2,0.2), axes_length=1,
+                  width=400, height=400):
+        """ basic visualisation
+        
+        invoking add_atoms, add_box (if sim_box), get_image and visualise functions
+        
+        """
+        if not atoms_df is None:
+            self.add_atoms(atoms_df, type_map, spheres, alpha)
+        if not sim_box is None:
+            self.add_box(sim_box[1:4], sim_box[0])
+            
+        image = self.get_image(xrot, yrot, zrot, fov, 
+                               show_axes, axes_offset, axes_length, width, height)
+        
+        # cleanup
+        self._atoms.pop()
+        if not sim_box is None: self._boxes.pop()
+
+        return self.visualise(image)

@@ -5,7 +5,7 @@ Created on Sun May  1 22:46:22 2016
 @author: cjs14
 """
 # so tab completion works
-from . import md_data
+from . import data_input
 from . import visualise_sim
 
 import os
