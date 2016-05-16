@@ -128,7 +128,7 @@ class Visualise_Sim(object):
         r_array = np.array(atoms_df[['xs','ys','zs']])
         r_array = self._unit_conversion(r_array, 'distance')
         
-        type_array = atoms_df['type'].map(lambda x: type_map.get(x,x))
+        type_array = atoms_df['type'].map(lambda x: type_map.get(x,x)).tolist()
         
         backend = 'impostors' if spheres else 'points'
         
@@ -264,7 +264,6 @@ class Visualise_Sim(object):
 
         ## ADD RENDERERS
         ## ----------------------------
-        rends = []
          
         #atoms renderer
         for r_array, type_array, backend, alpha in self._atoms:
@@ -276,15 +275,15 @@ class Visualise_Sim(object):
             else:
                 colormap = self._atomcolors
                 transparent = False
-            rends.append(v.add_renderer(AtomRenderer, r_array, type_array,
+            v.add_renderer(AtomRenderer, r_array, type_array,
                         color_scheme=colormap, radii_map=self._atomradii,
-                        backend=backend, transparent=transparent))  
+                        backend=backend, transparent=transparent) 
             all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
         #simulation bounding box render
         for vectors, origin, color in self._boxes:
-            rends.append(v.add_renderer(BoxRenderer,vectors,origin,
-                                        color=color))            
+            v.add_renderer(BoxRenderer,vectors,origin,
+                                        color=color)           
             #TODO account for other corners of box?
             b_array = vectors+origin                           
             all_array = b_array if all_array is None else np.concatenate([all_array,b_array])
@@ -292,10 +291,8 @@ class Visualise_Sim(object):
 
         if all_array is None:
             # Cleanup
-            for r in rends:
-                del r
-            del v
-            del w            
+            w.close()
+            v.clear()
             raise Exception('nothing available to render')
 
         # transfrom coordinate system
@@ -330,7 +327,7 @@ class Visualise_Sim(object):
                 startends = [[origin, vector],[origin, vector]]                      
                 colors = [[color, color],[color, color]]
                 #TODO add as arrows instead of lines 
-                rends.append(v.add_renderer(LineRenderer, startends, colors))
+                v.add_renderer(LineRenderer, startends, colors)
                 #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
         w.camera.autozoom(all_array)
@@ -340,11 +337,9 @@ class Visualise_Sim(object):
         image = self._trim_image(image)
 
         # Cleanup
-        for r in rends:
-            del r
-        del v
-        del w
-        
+        w.close()
+        v.clear()
+       
         return image
         
     def visualise(self, images, columns=1): 
@@ -381,6 +376,8 @@ class Visualise_Sim(object):
         b = BytesIO()
         image.save(b, format='png')
         data = b.getvalue()
+        del b
+        
         return ipy_Image(data=data)
 
     def basic_vis(self, atoms_df=None, sim_box=None, type_map={}, 
