@@ -86,6 +86,13 @@ class Visualise_Sim(object):
         self._axes = None
         self._triangles = []
         
+    def remove_all_objects(self):
+        self._atoms = []
+        self._boxes = []
+        self._hexagons = []
+        self._axes = None
+        self._triangles = []                
+        
     def change_atom_colormap(self, colormap=None, colorstrs=False):
         """
         colormap : dict, should contain the 'Xx' key,value pair
