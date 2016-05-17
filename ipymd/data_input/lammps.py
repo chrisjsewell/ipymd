@@ -138,13 +138,21 @@ class LAMMPS_Output(DataInput):
         dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
     """
-    def __init__(self, sys_path='', atom_path='', unscale_coords=True):
+    def __init__(self, sys_path='', atom_path=''):
         """
-        unscale_coords : bool
-            By default, atom coords are written in a scaled format (from 0 to 1), 
-            i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
-            distance from xlo to xhi of the box boundaries. 
-            http://lammps.sandia.gov/doc/dump.html?highlight=dump
+        Data divided into two levels; sytem and atom
+        
+        System level data created with `fix print`, e.g.;
+    
+            fix sys_info all print 100 "${t} ${natoms} ${temp}" &    
+            title "time natoms temp" file system.dump screen no
+            
+        Atom level data created with `dump`, e.g.;
+        
+            dump atom_info all custom 100 atom.dump id type xs ys zs mass q
+            OR (file per configuration)
+            dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
+
         """
         assert os.path.exists(sys_path) or not sys_path, 'sys_path does not exist'
         self._sys_path = sys_path
@@ -168,8 +176,16 @@ class LAMMPS_Output(DataInput):
         else:
             return sys_df.loc[step]
                         
-    def get_atom_data(self, step):
-        """ return pandas.DataFrame """
+    def get_atom_data(self, step, unscale_coords=True):
+        """ return pandas.DataFrame 
+
+        unscale_coords : bool
+            By default, atom coords are written in a scaled format (from 0 to 1), 
+            i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
+            box boundaries 'a' vector. 
+            http://lammps.sandia.gov/doc/dump.html?highlight=dump
+        
+        """
         if self._single_atom_file:
             current_step = 0
             with open(self._atom_path, 'r') as f:
@@ -177,7 +193,7 @@ class LAMMPS_Output(DataInput):
                     if 'ITEM: TIMESTEP' in line: 
                         
                         if step==current_step:
-                            return self._extract_atom_data(f)
+                            return self._extract_atom_data(f, unscale_coords)
                         else:
                             current_step+=1
                             # find the number of atoms and skip that many lines
@@ -196,21 +212,29 @@ class LAMMPS_Output(DataInput):
             with open(self._atom_path[step], 'r') as f:
                 for line in f:
                     if 'ITEM: TIMESTEP' in line: 
-                        return self._extract_atom_data(f)
+                        return self._extract_atom_data(f, unscale_coords)
             raise IOError("atom file of wrong format")
     
-    def _extract_atom_data(self, f):
+    def _extract_atom_data(self, f, unscale_coords=True):
         """ """
+        xy, xz, yz = 0., 0., 0.
+        
         line = self._skiplines(f, 1)
         #time = int(line.split()[0])
         line = self._skiplines(f, 2)
         num_atoms = int(line.split()[0])
         line = self._skiplines(f, 2)
         xlo, xhi = [float(line.split()[0]), float(line.split()[1])]
+        if len(line.split()) == 3:
+            xy = float(line.split()[2])
         line = self._skiplines(f, 1)
         ylo, yhi = [float(line.split()[0]), float(line.split()[1])]
+        if len(line.split()) == 3:
+            xz = float(line.split()[2])
         line = self._skiplines(f, 1)
         zlo, zhi = [float(line.split()[0]), float(line.split()[1])]
+        if len(line.split()) == 3:
+            yz = float(line.split()[2])
         line = self._skiplines(f, 1)
         headers = line.split()[2:]
         atoms = []
@@ -219,15 +243,26 @@ class LAMMPS_Output(DataInput):
             atoms.append(np.array(line.split(),dtype=float))
         atoms_df = pd.DataFrame(atoms, columns=headers)
         
-        self._unscale_coords(atoms_df, xlo, xhi, ylo, yhi, zlo, zhi)        
+        if unscale_coords:
+            self._unscale_coords(atoms_df, xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz)        
         
         return atoms_df
         
-    def _unscale_coords(self, atoms_df, x0, x1, y0, y1, z0, z1):
+    def _unscale_coords(self, atoms_df, xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz):
+        """
+        By default, atom coords are written in a scaled format (from 0 to 1), 
+        i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
+        box boundaries 'a' vector. 
+        http://lammps.sandia.gov/doc/dump.html?highlight=dump
+        """
+        a,b,c = np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]])
+        origin = np.array([xlo,ylo,zlo])
         
-        atoms_df['xs'] = atoms_df['xs'] * abs(x1-x0) + x0
-        atoms_df['ys'] = atoms_df['ys'] * abs(y1-y0) + y0
-        atoms_df['zs'] = atoms_df['zs'] * abs(z1-z0) + z0
+        new_coords = (np.array([atoms_df['xs'].values]).transpose() * a + 
+               np.array([atoms_df['ys'].values]).transpose() * b + 
+               np.array([atoms_df['zs'].values]).transpose() * c + 
+               origin) 
+        atoms_df[['xs','ys','zs']] = new_coords
 
     def get_atom_timestep(self, step):
         """ return simulation step, according to atom data """
