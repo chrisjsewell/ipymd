@@ -224,15 +224,15 @@ class LAMMPS_Output(DataInput):
         line = self._skiplines(f, 2)
         num_atoms = int(line.split()[0])
         line = self._skiplines(f, 2)
-        xlo, xhi = [float(line.split()[0]), float(line.split()[1])]
+        xlo_bound, xhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             xy = float(line.split()[2])
         line = self._skiplines(f, 1)
-        ylo, yhi = [float(line.split()[0]), float(line.split()[1])]
+        ylo_bound, yhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             xz = float(line.split()[2])
         line = self._skiplines(f, 1)
-        zlo, zhi = [float(line.split()[0]), float(line.split()[1])]
+        zlo_bound, zhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             yz = float(line.split()[2])
         line = self._skiplines(f, 1)
@@ -244,17 +244,27 @@ class LAMMPS_Output(DataInput):
         atoms_df = pd.DataFrame(atoms, columns=headers)
         
         if unscale_coords:
-            self._unscale_coords(atoms_df, xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz)        
+            self._unscale_coords(atoms_df, 
+                                 xlo_bound, xhi_bound, 
+                                 ylo_bound, yhi_bound, 
+                                 zlo_bound, zhi_bound, 
+                                 xy, xz, yz)        
         
         return atoms_df
         
-    def _unscale_coords(self, atoms_df, xlo, xhi, ylo, yhi, zlo, zhi, xy, xz, yz):
+    def _unscale_coords(self, atoms_df, 
+                        xlo_bound, xhi_bound, ylo_bound, yhi_bound, 
+                        zlo_bound, zhi_bound, xy, xz, yz):
         """
         By default, atom coords are written in a scaled format (from 0 to 1), 
         i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
         box boundaries 'a' vector. 
         http://lammps.sandia.gov/doc/dump.html?highlight=dump
         """
+        xlo, xhi = xlo_bound - min(0.0,xy,xz,xy+xz), xhi_bound - max(0.0,xy,xz,xy+xz)
+        ylo, yhi = ylo_bound - min(0.0,yz), yhi_bound - max(0.0,yz)
+        zlo, zhi = zlo_bound, zhi_bound
+
         a,b,c = np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]])
         origin = np.array([xlo,ylo,zlo])
         
@@ -340,18 +350,22 @@ class LAMMPS_Output(DataInput):
         line = self._skiplines(f, 1) # to time
         line = self._skiplines(f, 2) # to nummper of atoms
         line = self._skiplines(f, 2) # to simulation box
-        xlo, xhi = [float(line.split()[0]), float(line.split()[1])]
+        xlo_bound, xhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             xy = float(line.split()[2])
         line = self._skiplines(f, 1)
-        ylo, yhi = [float(line.split()[0]), float(line.split()[1])]
+        ylo_bound, yhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             xz = float(line.split()[2])
         line = self._skiplines(f, 1)
-        zlo, zhi = [float(line.split()[0]), float(line.split()[1])]
+        zlo_bound, zhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:
             yz = float(line.split()[2])
-        
+       
+        xlo, xhi = xlo_bound - min(0.0,xy,xz,xy+xz), xhi_bound - max(0.0,xy,xz,xy+xz)
+        ylo, yhi = ylo_bound - min(0.0,yz), yhi_bound - max(0.0,yz)
+        zlo, zhi = zlo_bound, zhi_bound
+
         return np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]]), np.array([xlo,ylo,zlo])
 
     def count_timesteps(self):
