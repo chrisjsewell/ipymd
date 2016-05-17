@@ -125,7 +125,7 @@ class Visualise_Sim(object):
             assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
             self._atomradii = radiimap
         
-    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1.):
+    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1., shading='phong'):
         """ add atoms to visualisation
 
         atoms_df : pandas.DataFrame
@@ -136,6 +136,8 @@ class Visualise_Sim(object):
             whether the atoms are rendered as spheres or points
         alpha : float
             how transparent the atoms are (if spheres) 0 to 1
+        shading : str
+            phong or toon
         """
         assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
         
@@ -148,7 +150,7 @@ class Visualise_Sim(object):
         
         assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
 
-        self._atoms.append([r_array.copy(), type_array, backend, alpha])   
+        self._atoms.append([r_array.copy(), type_array, backend, alpha, shading])   
         
     def remove_atoms(self, n=1):
         """ remove the last n sets of atoms to be added """
@@ -361,7 +363,7 @@ class Visualise_Sim(object):
         ## ----------------------------
          
         #atoms renderer
-        for r_array, type_array, backend, alpha in self._atoms:
+        for r_array, type_array, backend, alpha, shading in self._atoms:
             if alpha < 1.:
                 transparent = True
                 cols=np.array(self._atomcolors.values())
@@ -372,7 +374,7 @@ class Visualise_Sim(object):
                 transparent = False
             v.add_renderer(AtomRenderer, r_array, type_array,
                         color_scheme=colormap, radii_map=self._atomradii,
-                        backend=backend, transparent=transparent) 
+                        backend=backend, transparent=transparent, shading=shading) 
             all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
         #boxes render
