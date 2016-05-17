@@ -15,23 +15,52 @@ class Atom_Manipulation(object):
     atom_df : pandas.DataFrame
         containing columns; xs, ys, zs, type
     """
-    def __init__(self):
+    def __init__(self, atom_df):
         """ a class to manipulate atom data
         
         atom_df : pandas.DataFrame
             containing columns; xs, ys, zs, type
         """
-        pass
+        assert set(atom_df.columns).issuperset(['xs','ys','zs','type'])
+        
+        self._atom_df_new = atom_df.copy()
+        self._atom_df_old = None
+        self._original_atom_df = atom_df.copy()
 
-    def change_variable(self, atom_df, old, new, vtype='type'):
-        atom_copy = atom_df.copy()
-        atom_copy.loc[atom_copy[vtype]==old, vtype] = new
-        return atom_copy
+    @property
+    def df(self):
+        return self._atom_df_new.copy()    
+    
+    @property
+    def _atom_df(self):
+        return self._atom_df_new   
 
-    def filter_variable(self, atom_df, values, vtype='type'):
+    @_atom_df.setter
+    def _atom_df(self, atom_df):
+        self._atom_df_old = self._atom_df_new
+        self._atom_df_new = atom_df
+    
+    def undo_last(self):
+        if self._atom_df_old is not None:
+            self._atom_df_new = self._atom_df_old
+            self._atom_df_old = None
+            
+        
+    def revert_to_original(self):
+        """ revert to original atom_df """
+        self._atom_df = self._original_atom_df.copy()
+        
+    def change_variables(self, map_dict, vtype='type'):
+        self._atom_df.replace({vtype:map_dict}, inplace=True)
+
+    def filter_variables(self, values, vtype='type'):
+        if isinstance(values, int):
+            values = [values]
+        if isinstance(values, float):
+            values = [values]
         if isinstance(values, basestring):
             values = [values]
-        return atom_df[atom_df[vtype].isin(values)].copy()
+        self._atom_df = self._atom_df[self._atom_df[vtype].isin(values)]
 
     def _pnts_in_pointcloud(self, points, new_pts):
         """2D or 3D
@@ -47,15 +76,15 @@ class Atom_Manipulation(object):
             inside.append(vol == new_hull.volume)
         return np.array(inside)
     
-    def filter_inside_pts(self, atom_df, points):
-        """return only atoms inside points 
+    def filter_inside_pts(self, points):
+        """return only atoms inside the bounding shape of a set of points 
 
         points : np.array((N,3))        
         """ 
-        inside = self._pnts_in_pointcloud(points, atom_df[['xs','ys','zs']].values)
-        return atom_df[inside].copy()
+        inside = self._pnts_in_pointcloud(points, self._atom_df[['xs','ys','zs']].values)
+        self._atom_df = self._atom_df[inside]
 
-    def filter_inside_box(self, atom_df, vectors, origin=np.zeros(3)):
+    def filter_inside_box(self, vectors, origin=np.zeros(3)):
         """return only atoms inside box
         
         vectors : np.array((3,3))
@@ -65,7 +94,7 @@ class Atom_Manipulation(object):
         """
         a,b,c = vectors + origin
         points = [origin, a, b, a+b, c, a+c, b+c, a+b+c]
-        return self.filter_inside_pts(atom_df, points)
+        self.filter_inside_pts(points)
     
     def _rotate(self, v, axis, theta):
         """
@@ -84,7 +113,7 @@ class Atom_Manipulation(object):
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])    
         return np.dot(rotation_matrix, v)
 
-    def filter_inside_hexagon(self, atom_df, vectors, origin=np.zeros(3)):
+    def filter_inside_hexagon(self, vectors, origin=np.zeros(3)):
         """return only atoms inside hexagonal prism
         
         vectors : np.array((2,3))
@@ -96,46 +125,38 @@ class Atom_Manipulation(object):
         points = [self._rotate(a, c, angle) for angle in [0,60,120,180,240,300]]
         points += [p + c for p in points]
         points = np.array(points) + origin
-        return self.filter_inside_pts(atom_df, points)
+        self.filter_inside_pts(points)
 
-    def repeat_cell(self, atom_df, vectors, repetitions=((0,1),(0,1),(0,1))):
+    def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1))):
         """ repeat atoms along vectors a, b, c  """
         dfs = []        
         for i in range(repetitions[0][0], repetitions[0][1]+1):
             for j in range(repetitions[1][0], repetitions[1][1]+1):
                 for k in range(repetitions[2][0], repetitions[2][1]+1):
-                    atom_copy = atom_df.copy()
+                    atom_copy = self._atom_df.copy()
                     atom_copy[['xs','ys','zs']] = (atom_copy[['xs','ys','zs']]
                                 + i*vectors[0]  + j*vectors[1] + k*vectors[2])
                     dfs.append(atom_copy)
-        return pd.concat(dfs)
+        self._atom_df = pd.concat(dfs)
         
-    def slice_x(self, atom_df, minval=None, maxval=None):
-        atom_copy = atom_df.copy()
+    def slice_x(self, minval=None, maxval=None):
         if minval is not None:
-            atom_copy = atom_copy[atom_copy['xs']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['xs']>=minval]
         if maxval is not None:
-            atom_copy = atom_copy[atom_copy['xs']<=maxval].copy()
-            
-        return atom_copy
+            self._atom_df = self._atom_df[self._atom_df['xs']<=maxval]
 
-    def slice_y(self, atom_df, minval=None, maxval=None):
-        atom_copy = atom_df.copy()
+    def slice_y(self, minval=None, maxval=None):
         if minval is not None:
-            atom_copy = atom_copy[atom_copy['ys']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['ys']>=minval]
         if maxval is not None:
-            atom_copy = atom_copy[atom_copy['ys']<=maxval].copy()
-            
-        return atom_copy
+            self._atom_df = self._atom_df[self._atom_df['ys']<=maxval]
 
-    def slice_z(self, atom_df, minval=None, maxval=None):
-        atom_copy = atom_df.copy()
+    def slice_z(self, minval=None, maxval=None):
         if minval is not None:
-            atom_copy = atom_copy[atom_copy['zs']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['zs']>=minval]
         if maxval is not None:
-            atom_copy = atom_copy[atom_copy['zs']<=maxval].copy()
-            
-        return atom_copy
-                        
+            self._atom_df = self._atom_df[self._atom_df['zs']<=maxval]
+                                    
     #TODO slice along arbitrary direction
-        
+                        
+       
