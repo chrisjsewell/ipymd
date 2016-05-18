@@ -106,12 +106,10 @@ class Crystal(DataInput):
             self._atoms['charge'] = np.nan
             for typ in atom_type:
                 self._atoms.loc[self._atoms['type']== typ,'charge'] = charge_map[typ]
-                
-            
             
     def get_atom_data(self):
         """ return atom data """
-        return self._atoms
+        return self._atoms.copy()
 
     def get_simulation_box(self):
         """ return list of coordinates origin & [a,b,c] """

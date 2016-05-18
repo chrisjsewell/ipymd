@@ -125,6 +125,7 @@ class Visualise_Sim(object):
             assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
             self._atomradii = radiimap
         
+    #TODO have possibility of directly specifying color, alpha, etc directly in atom_df
     def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1., illustrate=False):
         """ add atoms to visualisation
 
