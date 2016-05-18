@@ -125,7 +125,7 @@ class Visualise_Sim(object):
             assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
             self._atomradii = radiimap
         
-    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1., shading='phong'):
+    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1., illustrate=False):
         """ add atoms to visualisation
 
         atoms_df : pandas.DataFrame
@@ -136,8 +136,8 @@ class Visualise_Sim(object):
             whether the atoms are rendered as spheres or points
         alpha : float
             how transparent the atoms are (if spheres) 0 to 1
-        shading : str
-            phong or toon
+        illustrate : str
+            if True, atom shading is more indicative of an illustration
         """
         assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
         
@@ -147,6 +147,8 @@ class Visualise_Sim(object):
         type_array = atoms_df['type'].map(lambda x: type_map.get(x,x)).tolist()
         
         backend = 'impostors' if spheres else 'points'
+        
+        shading = 'toon' if illustrate else 'phong'
         
         assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
 

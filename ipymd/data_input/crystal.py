@@ -9,6 +9,7 @@ ASE https://wiki.fysik.dtu.dk/ase/
 Copyright (C) 2010, Jesper Friis
 
 """
+import os
 import numpy as np
 import pandas as pd
 
@@ -17,13 +18,20 @@ from chemlab.core.spacegroup.cell import cellpar_to_cell
 
 from .base import DataInput
 
+def get_spacegroup_df():
+    """ dataframe of spacegroup mappings """
+    sg_path =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 
+                            'spacegroups.csv')
+    return pd.read_csv(sg_path, index_col=0)
+
 class Crystal(DataInput):
     """Build a crystal from atomic positions, space group and cell
     parameters.
 
     """
     def __init__(self, positions, atom_type, group,
-            cellpar=[1.0, 1.0, 1.0, 90, 90, 90], repetitions=[1, 1, 1]):
+            cellpar=[1.0, 1.0, 1.0, 90, 90, 90], repetitions=[1, 1, 1],
+            mass_map={}, charge_map={}):
         """Build a crystal from atomic positions, space group and cell
         parameters (in Angstroms)
         
@@ -36,12 +44,17 @@ class Crystal(DataInput):
             The atom types corresponding to the positions, the atoms will be
             translated in all the equivalent positions.
         group : int | str
-            Space group given either as its number in International Tables
-            or as its Hermann-Mauguin symbol.
+            Space group given as its number in International Tables
+            NB: to see mappings from Hermann–Mauguin notation, etc, 
+            use the get_spacegroup_df function in this module
         repetitions :
             Repetition of the unit cell in each direction
         cellpar :
             Unit cell parameters (in nm and degrees)
+        mass_map : dict of atom masses
+            mapping of atom masses to atom types
+        charge_map : dict of atom charges
+            mapping of atom charges to atom types
     
         This function was taken and adapted from the *spacegroup* module 
         found in `ASE <https://wiki.fysik.dtu.dk/ase/>`_.
@@ -84,7 +97,18 @@ class Crystal(DataInput):
                         aid+=1
                 
         self._atoms = pd.DataFrame(atoms,columns=['id','type','xs','ys','zs'])
-    
+        
+        if mass_map:
+            self._atoms['mass'] = np.nan
+            for typ in atom_type:
+                self._atoms.loc[self._atoms['type']== typ,'mass'] = mass_map[typ]
+        if charge_map:
+            self._atoms['charge'] = np.nan
+            for typ in atom_type:
+                self._atoms.loc[self._atoms['type']== typ,'charge'] = charge_map[typ]
+                
+            
+            
     def get_atom_data(self):
         """ return atom data """
         return self._atoms

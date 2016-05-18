@@ -8,6 +8,7 @@ Created on Sun May  1 22:46:22 2016
 from . import data_input
 from . import visualise_sim
 from . import atom_manipulation
+from . import atom_analysis
 
 import os
 import inspect

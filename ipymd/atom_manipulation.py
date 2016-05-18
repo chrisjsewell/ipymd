@@ -129,15 +129,24 @@ class Atom_Manipulation(object):
 
     def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1))):
         """ repeat atoms along vectors a, b, c  """
+        xreps,yreps,zreps = repetitions
+        if isinstance(xreps, int):
+            xreps = (0,xreps)
+        if isinstance(yreps, int):
+            yreps = (0,yreps)
+        if isinstance(zreps, int):
+            zreps = (0,zreps)
+
         dfs = []        
-        for i in range(repetitions[0][0], repetitions[0][1]+1):
-            for j in range(repetitions[1][0], repetitions[1][1]+1):
-                for k in range(repetitions[2][0], repetitions[2][1]+1):
+        for i in range(xreps[0], xreps[1]+1):
+            for j in range(yreps[0], yreps[1]+1):
+                for k in range(zreps[0], zreps[1]+1):
                     atom_copy = self._atom_df.copy()
                     atom_copy[['xs','ys','zs']] = (atom_copy[['xs','ys','zs']]
                                 + i*vectors[0]  + j*vectors[1] + k*vectors[2])
                     dfs.append(atom_copy)
         self._atom_df = pd.concat(dfs)
+        #TODO check for identical atoms and warn
         
     def slice_x(self, minval=None, maxval=None):
         if minval is not None:
