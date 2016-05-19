@@ -11,8 +11,6 @@ added patch to allow for transparent atoms when using 'impostors' backend
 import numpy as np
 
 # CJS changed relative paths to chemlab ones
-from chemlab.graphics import colors
-from chemlab.db import ChemlabDB
 from chemlab.graphics.renderers.base import AbstractRenderer
 from chemlab.graphics.renderers.sphere import SphereRenderer
 from chemlab.graphics.renderers.sphere_imp import SphereImpostorRenderer
@@ -37,16 +35,7 @@ class AtomRenderer(AbstractRenderer):
         .. seealso: :py:class:`~chemlab.graphics.renderers.SphereRenderer`
                     :py:class:`~chemlab.graphics.renderers.SphereImpostorRenderer`
                     :py:class:`~chemlab.graphics.renderers.PointRenderer`
-    
-    color_scheme: dict, should contain the 'Xx' key,value pair
-       A dictionary mapping atom types to colors. By default it is the color
-       scheme provided by `chemlab.graphics.colors.default_atom_map`. The 'Xx'
-       symbol value is taken as the default color.
-    
-    radii_map: dict, should contain the 'Xx' key,value pair.
-       A dictionary mapping atom types to radii. The default is the
-       mapping contained in `chemlab.db.vdw.vdw_dict`
-    
+        
     """
 
     def __init__(self, widget, r_array, radii, colorlist,
@@ -61,10 +50,10 @@ class AtomRenderer(AbstractRenderer):
                                      shading = shading)
             
         elif backend == 'impostors':
-            self.sr = SphereImpostorRenderer(widget, r_array, radii,
-                                             colorlist, shading=shading, transparent=transparent)
+            self.sr = SphereImpostorRenderer(widget, r_array.tolist(), radii.tolist(),
+                                             colorlist.tolist(), shading=shading, transparent=transparent)
         elif backend == 'points':
-            self.sr = PointRenderer(widget, r_array, colorlist)
+            self.sr = PointRenderer(widget, r_array.tolist(), colorlist.tolist())
         else:
             raise Exception("No backend %s available. Choose between polygons, impostors or points" % backend)
 
