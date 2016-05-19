@@ -73,7 +73,7 @@ class DataInput(object):
         for typ in atom_df['type'].unique():            
             atom_df.loc[atom_df['type']==typ,'color'] = _col_dict[col_cycle.next()][0]
         
-    def _skiplines(self, f, num):
+    def _skiplines(self, f, num=1):
         """ skip line(s) in an open file """
         for n in range(num):
             line = next(f)

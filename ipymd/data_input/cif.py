@@ -18,7 +18,7 @@ class CIF(DataInput):
     """ Build a crystal from  a Crystallographic Information File (.cif)
 
     """ 
-    def __init__(self, file_path):
+    def __init__(self, file_path, ignore_overlaps=False):
         """ Build a crystal from  a Crystallographic Information File (.cif)
 
         here is a typical example of a CIF file:
@@ -55,7 +55,7 @@ class CIF(DataInput):
             
         """  
         data = self._read_cif_file(file_path)
-        atoms_df, vectors = self._convert_cif_data(data)
+        atoms_df, vectors = self._convert_cif_data(data, ignore_overlaps)
         self._add_colors(atoms_df)
         self._add_radii(atoms_df)
     
@@ -69,7 +69,8 @@ class CIF(DataInput):
     def get_simulation_box(self):
         """ return list of coordinates origin & [a,b,c] """
         return self._vectors
-    
+
+    #TODO read and deal with occupancy values (and overlapping atoms)        
     def _read_cif_file(self, file_path):
         """
         
@@ -80,24 +81,20 @@ class CIF(DataInput):
         assert os.path.exists(file_path), '{0} does not exist'.format(file_path)
         
         data = {}
-    
+        
         # Open the CIF file.
         with open(file_path, 'r') as f:
     
             reading_sym_ops = False
-            reading_atom_sites = False
-            lineNr = 0
+            
+            atom_headers = []
     
             # Read lines one by one.
             for line in f:
     
-                # Keep track of line number.
-                lineNr += 1
-    
                 # Split into columns.
                 cols = line.split()
                 if (len(cols) == 0): continue
-    
     
                 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 # Identify the keyword.  Here are the simply "key: value" ones.
@@ -145,39 +142,22 @@ class CIF(DataInput):
                 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
                 # Search for the keyword "_atom_site_label" which indicates the
                 # start of the atom_site data.
-                elif (cols[0] == '_atom_site_label'):
-                    index_label = lineNr
-                    data['_atom_site_label'] = []
-                    data['_atom_site_fract_x'] = []
-                    data['_atom_site_fract_y'] = []
-                    data['_atom_site_fract_z'] = []
-                    reading_atom_sites = True
-    
-                # Keep track of where the other labels are (order is important).
-                elif (cols[0] == '_atom_site_fract_x'):
-                    index_x = lineNr - index_label
-    
-                elif (cols[0] == '_atom_site_fract_y'):
-                    index_y = lineNr - index_label
-    
-                elif (cols[0] == '_atom_site_fract_z'):
-                    index_z = lineNr - index_label
-    
-                # If we are currently reading the atom sites... 
-                elif (reading_atom_sites):
-    
-                    # Read the actual data if we have 4 columns or more of data.
-                    if (len(cols) >= 4):
-                        data['_atom_site_label'].append(cols[0])
-                        data['_atom_site_fract_x'].append(float(cols[index_x]))
-                        data['_atom_site_fract_y'].append(float(cols[index_y]))
-                        data['_atom_site_fract_z'].append(float(cols[index_z]))
-    
+                elif (cols[0] == '_atom_site_label') and not atom_headers:
+                    
+                    while len(cols) < 4:
+                        atom_headers.append(cols[0])
+                        data[cols[0]] = []
+                        line = self._skiplines(f)
+                        cols = line.split()
+                    
                     # Stop reading atom sites if we found a line with fewer
                     # columns, and which does not start with '_atom_site_'.
-                    elif (len(cols[0]) < 11  or  cols[0][:11] != '_atom_site_'):
-                        reading_atom_sites = False
-    
+                    while len(cols) == len(atom_headers):
+                        for i, name in enumerate(atom_headers):
+                            data[name].append(cols[i])
+                        line = self._skiplines(f)
+                        cols = line.split()
+        
         # Return the extracted data.
         return data
         
@@ -203,7 +183,7 @@ class CIF(DataInput):
         raise Exception('WARNING: could not convert "%s" into element name!' % label)
         return label
     
-    def _convert_cif_data(self, data):
+    def _convert_cif_data(self, data, ignore_overlaps=False):
         
         radians = math.radians
         cos, sin = math.cos, math.sin
@@ -233,20 +213,24 @@ class CIF(DataInput):
         fX = [ float(s) for s in data['_atom_site_fract_x'] ]
         fY = [ float(s) for s in data['_atom_site_fract_y'] ]
         fZ = [ float(s) for s in data['_atom_site_fract_z'] ]
+        if data.has_key('_atom_site_occupancy'):
+            occ = [ float(s) for s in data['_atom_site_occupancy'] ]
+        else:
+            occ = [ 1.0 for _ in data['_atom_site_label'] ]
         
         # Create a list of 4-tuples, where each tuple is an atom:
         #   [ ('Si', 0.4697, 0.0, 0.0),  ('O', 0.4135, 0.2669, 0.1191),  ... ]
-        atoms = [ (labels[i], fX[i], fY[i], fZ[i]) for i in range(len(labels)) ]
+        atoms = [ (labels[i], fX[i], fY[i], fZ[i], occ[i]) for i in range(len(labels)) ]
         
         # Make sure that all atoms lie within the unit cell.  Also convert names such
         # as 'Oa1' into 'O'.
         for i in range(len(atoms)):
-            (name,xn,yn,zn) = atoms[i]
+            (name,xn,yn,zn,oc) = atoms[i]
             xn = (xn + 10.0) % 1.0
             yn = (yn + 10.0) % 1.0
             zn = (zn + 10.0) % 1.0
             name = self._extract_element(name)
-            atoms[i] = (name,xn,yn,zn)
+            atoms[i] = (name,xn,yn,zn,oc)
             
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # Use symmetry operations to create the unit cell.
@@ -263,11 +247,12 @@ class CIF(DataInput):
         
         
         # For each atom, apply each symmetry operation to create a new atom.
+        overlap_atoms = []
         imax = len(atoms)
         i=0
         while (i < imax):
         
-            label,x,y,z = atoms[i]
+            label,x,y,z,oc = atoms[i]
         
             for op in ops:
         
@@ -289,17 +274,24 @@ class CIF(DataInput):
         
                         # Check that this is the same atom type.
                         if (at[0] != label):
-                            raise Exception('invalid CIF file: atom of type %s overlaps with atom of type %s' % (at[0],label))
-        
+                            if at[4] + oc != 1:
+                                raise Exception('overlapping atoms do not have occupancy summing to unity')
+                            overlap_atoms.append((label,xn,yn,zn,oc))
+                                
                 # If the atom is new, add it to the list!
                 if (new_atom):
-                    atoms.append( (label,xn,yn,zn) )  # add a 4-tuple
+                    atoms.append( (label,xn,yn,zn,oc) )  # add a 4-tuple
         
         
             # Update the loop iterator.
             i = i + 1
             imax = len(atoms)
+
+        if overlap_atoms and not ignore_overlaps:
+            raise Exception('invalid CIF file: atom of type %s overlaps with atom of type %s' % (at[0],label))
         
+        atoms+=overlap_atoms
+
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # Convert the fractional coordinates into real coordinates.
         
@@ -348,7 +340,7 @@ class CIF(DataInput):
         for i in range(len(atoms)):
         
             # Get label and fractional coordinates.
-            label,xf,yf,zf = atoms[i]
+            label,xf,yf,zf,oc = atoms[i]
         
             xa = xf * ax  # contribution of a-vector to the x-coordinate of this atom
             #ya = 0       # a-vector has no y-component, so does not affect y of atom
@@ -367,9 +359,9 @@ class CIF(DataInput):
             yn = yb + yc
             zn = zc
         
-            atoms[i] = (label, xn, yn, zn)
+            atoms[i] = (label, xn, yn, zn,oc)
         
-        df = pd.DataFrame(atoms, columns=['type', 'xs', 'ys', 'zs'])
+        df = pd.DataFrame(atoms, columns=['type', 'xs', 'ys', 'zs','occupancy'])
     
         return df, (np.array([a,b,c]),np.array([0.,0.,0.]))   
         
