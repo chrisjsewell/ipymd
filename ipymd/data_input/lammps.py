@@ -24,6 +24,7 @@ class LAMMPS_Input(DataInput):
     def __init__(self, atom_path=''):
         assert os.path.exists(atom_path) or not atom_path, 'atom_path does not exist'
         self._atom_path = atom_path
+        
     def get_atom_data(self, atom_style='atomic'):        
         """ get data from file
         
@@ -79,6 +80,9 @@ class LAMMPS_Input(DataInput):
             atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'xs', 'ys', 'zs'])
         elif atom_style == 'charge':
             atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'q', 'xs', 'ys', 'zs'])
+
+        self._add_colors(atom_df)
+        self._add_radii(atom_df)
             
         return atom_df
     
@@ -193,7 +197,10 @@ class LAMMPS_Output(DataInput):
                     if 'ITEM: TIMESTEP' in line: 
                         
                         if step==current_step:
-                            return self._extract_atom_data(f, unscale_coords)
+                            atoms_df =  self._extract_atom_data(f, unscale_coords)
+                            self._add_colors(atoms_df)
+                            self._add_radii(atoms_df)
+                            return atoms_df
                         else:
                             current_step+=1
                             # find the number of atoms and skip that many lines
@@ -205,15 +212,20 @@ class LAMMPS_Output(DataInput):
                                                         step, current_step-1))
             else:
                 raise IOError("atom file of wrong format")
-        else:
+        elif not self._single_atom_file:
             if len(self._atom_path)-1 < step:
                 raise IOError("timestep {0} exceeds maximum ({1})".format
                                                 (step, len(self._atom_path)-1))
             with open(self._atom_path[step], 'r') as f:
                 for line in f:
                     if 'ITEM: TIMESTEP' in line: 
-                        return self._extract_atom_data(f, unscale_coords)
+                        atoms_df =  self._extract_atom_data(f, unscale_coords)
+                        self._add_colors(atoms_df)
+                        self._add_radii(atoms_df)
+                        return atoms_df
+                        
             raise IOError("atom file of wrong format")
+        
     
     def _extract_atom_data(self, f, unscale_coords=True):
         """ """

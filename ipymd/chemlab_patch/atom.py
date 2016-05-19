@@ -5,6 +5,7 @@ Created on Sun May 15 20:10:20 2016
 @author: cjs14
 
 added patch to allow for transparent atoms when using 'impostors' backend
+& changed to have pre-processing of colors and radii
 """
 
 import numpy as np
@@ -16,9 +17,6 @@ from chemlab.graphics.renderers.base import AbstractRenderer
 from chemlab.graphics.renderers.sphere import SphereRenderer
 from chemlab.graphics.renderers.sphere_imp import SphereImpostorRenderer
 from chemlab.graphics.renderers.point import PointRenderer
-
-
-vdw_dict = ChemlabDB().get("data", 'vdwdict')
 
 class AtomRenderer(AbstractRenderer):
     """Render atoms by using different rendering methods.
@@ -51,21 +49,10 @@ class AtomRenderer(AbstractRenderer):
     
     """
 
-    def __init__(self, widget, r_array, type_array,
+    def __init__(self, widget, r_array, radii, colorlist,
                  backend='impostors',
-                 color_scheme=colors.default_atom_map,
-                 radii_map=vdw_dict,
                  shading='phong',
-                 transparent=False):
-        radii = []
-        colorlist = []
-        natoms = len(r_array)
-
-        for i in range(natoms):
-            radii.append(radii_map.get(type_array[i],
-                                            radii_map['Xx']))
-            colorlist.append(color_scheme.get(type_array[i],
-                                            color_scheme['Xx']))
+                 transparent=True):
 
         self.radii = radii        
         self.colors = np.array(colorlist, dtype='uint8')

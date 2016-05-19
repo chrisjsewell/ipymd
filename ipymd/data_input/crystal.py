@@ -103,10 +103,13 @@ class Crystal(DataInput):
             for typ in atom_type:
                 self._atoms.loc[self._atoms['type']== typ,'mass'] = mass_map[typ]
         if charge_map:
-            self._atoms['charge'] = np.nan
+            self._atoms['q'] = np.nan
             for typ in atom_type:
-                self._atoms.loc[self._atoms['type']== typ,'charge'] = charge_map[typ]
-            
+                self._atoms.loc[self._atoms['type']== typ,'q'] = charge_map[typ]
+
+        self._add_colors(self._atoms)
+        self._add_radii(self._atoms)
+  
     def get_atom_data(self):
         """ return atom data """
         return self._atoms.copy()

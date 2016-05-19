@@ -56,6 +56,9 @@ class CIF(DataInput):
         """  
         data = self._read_cif_file(file_path)
         atoms_df, vectors = self._convert_cif_data(data)
+        self._add_colors(atoms_df)
+        self._add_radii(atoms_df)
+    
         self._atoms_df = atoms_df
         self._vectors = vectors
     

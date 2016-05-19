@@ -13,8 +13,6 @@ from chemlab.graphics.renderers.line import LineRenderer
 #from chemlab.graphics.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
 #                                             OutlineEffect, SSAOEffect)
 from chemlab.graphics.colors import get as str_to_colour
-from chemlab.graphics import colors as chemlab_colors
-from chemlab.db import ChemlabDB
 from chemlab.graphics.transformations import rotation_matrix
 def orbit_z(self, angle):
     # Subtract pivot point
@@ -46,7 +44,7 @@ class Visualise_Sim(object):
     """
     _unit_dict = {'real':{'distance':0.1}}
     
-    def __init__(self, colormap=None, radiimap=None, units='real'):
+    def __init__(self, units='real'):
         """
         colormap: dict, should contain the 'Xx' key,value pair
            A dictionary mapping atom types to colors. By default it is the color
@@ -74,10 +72,6 @@ class Visualise_Sim(object):
         """
         assert units=='real', 'currently only supports real units'
         self._units = units
-        self._atomcolors = None
-        self.change_atom_colormap()
-        self._atomradii = None  
-        self.change_atom_radiimap()
         
         # rendered objects
         self._atoms = []
@@ -92,68 +86,43 @@ class Visualise_Sim(object):
         self._hexagons = []
         self._axes = None
         self._triangles = []                
-        
-    def change_atom_colormap(self, colormap=None, colorstrs=False):
-        """
-        colormap : dict, should contain the 'Xx' key,value pair
-           A dictionary mapping atom types to colors, in RGBA format (0-255) 
-           By default it is the color scheme provided by 
-           `chemlab.graphics.colors.default_atom_map`. The 'Xx' symbol value is 
-           taken as the default color.   
-        colorstrs : bool
-            if True, colors should be strings matching colors in `chemlab.graphics.colors`
-        """
-        if colormap is None:
-            self._atomcolors = chemlab_colors.default_atom_map
-        else:
-            assert colormap.has_key('Xx'), "colormap should contain an 'Xx' default key"
-            if colorstrs:
-                colormap = dict([[k,str_to_colour(v)] for k,v in colormap.iteritems()])
-                if None in colormap.values():
-                    raise ValueError('one or more colors not found')
-            self._atomcolors = colormap
-
-    def change_atom_radiimap(self, radiimap=None):
-        """
-        radii_map: dict, should contain the 'Xx' key,value pair.
-           A dictionary mapping atom types to radii. The default is the
-           mapping contained in `chemlab.db.vdw.vdw_dict`        
-        """
-        if radiimap is None:
-            self._atomradii = ChemlabDB().get("data", 'vdwdict')
-        else:
-            assert radiimap.has_key('Xx'), "radiimap should contain an 'Xx' default key"
-            self._atomradii = radiimap
-        
+                
     #TODO have possibility of directly specifying color, alpha, etc directly in atom_df
-    def add_atoms(self, atoms_df, type_map={}, spheres=True, alpha=1., illustrate=False):
+    def add_atoms(self, atoms_df, spheres=True, illustrate=False):
         """ add atoms to visualisation
 
         atoms_df : pandas.DataFrame
-            a table of atom data, must contain columns;  xs, yx, zs and type
-        type_map : dict
-            mapping of types
+            a table of atom data, must contain columns;  
+            xs, yx, zs, radius, color and transparency
         spheres : bool
             whether the atoms are rendered as spheres or points
-        alpha : float
-            how transparent the atoms are (if spheres) 0 to 1
         illustrate : str
             if True, atom shading is more indicative of an illustration
         """
-        assert set(['xs','ys','zs','type']).issubset(set(atoms_df.columns))
+        assert set(['xs','ys','zs','radius','color','transparency']).issubset(set(atoms_df.columns))
         
         r_array = np.array(atoms_df[['xs','ys','zs']])
         r_array = self._unit_conversion(r_array, 'distance')
         
-        type_array = atoms_df['type'].map(lambda x: type_map.get(x,x)).tolist()
+        radii = np.array(atoms_df['radius'])
+        radii = self._unit_conversion(radii, 'distance')
+        
+        cols = atoms_df['color'].apply(
+                lambda x: str_to_colour(x) if isinstance(x,basestring) else x).tolist()
+        if None in cols:
+            raise ValueError('one or more colors not found')
+        cols = np.array(cols)
+        alphas = np.array(atoms_df['transparency'])
+        
+        #type_array = atoms_df['type'].map(lambda x: type_map.get(x,x)).tolist()
         
         backend = 'impostors' if spheres else 'points'
         
         shading = 'toon' if illustrate else 'phong'
         
-        assert alpha <= 1. and alpha > 0., 'alpha must be between 0 and 1'
+        assert max(alphas) <= 1. and min(alphas) > 0., 'transparency must be between 0 and 1'
 
-        self._atoms.append([r_array.copy(), type_array, backend, alpha, shading])   
+        self._atoms.append([r_array, radii, cols, alphas, backend, shading])   
         
     def remove_atoms(self, n=1):
         """ remove the last n sets of atoms to be added """
@@ -334,7 +303,8 @@ class Visualise_Sim(object):
         
         return final_img
 
-    def get_image(self, xrot=0, yrot=0, zrot=0, fov=10., width=400, height=400):
+    # orthogonal perspective
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., width=400, height=400):
         """ get image of atom configuration
         
         requires atoms to have, at least variables xs, yx, zs and type
@@ -366,19 +336,18 @@ class Visualise_Sim(object):
         ## ----------------------------
          
         #atoms renderer
-        for r_array, type_array, backend, alpha, shading in self._atoms:
-            if alpha < 1.:
-                transparent = True
-                cols=np.array(self._atomcolors.values())
-                cols[:,3] = int(alpha*255)
-                colormap = dict(zip(self._atomcolors.keys(), cols.tolist()))
+        for r_array, radii, colors, alphas, backend, shading in self._atoms:
+            
+            if min(alphas) == 1:
+                transparent=False
             else:
-                colormap = self._atomcolors
-                transparent = False
-            v.add_renderer(AtomRenderer, r_array, type_array,
-                        color_scheme=colormap, radii_map=self._atomradii,
-                        backend=backend, transparent=transparent, shading=shading) 
-            all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
+                transparent = True
+            colors[:,3] = alphas*255
+
+            v.add_renderer(AtomRenderer, r_array, radii, colors, backend=backend, 
+                           transparent=transparent, shading=shading)             
+       
+        all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
         #boxes render
         for box_vectors, box_origin, box_color, box_width in self._boxes:
@@ -498,8 +467,8 @@ class Visualise_Sim(object):
         
         return ipy_Image(data=data)
 
-    def basic_vis(self, atoms_df=None, sim_box=None, type_map={}, 
-                  spheres=True, alpha=1, 
+    def basic_vis(self, atoms_df=None, sim_box=None, 
+                  spheres=True, illustrate=False, 
                   xrot=0, yrot=0, zrot=0, fov=10.,
                   axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), axes_length=1., axes_offset=(-1.2,0.2),
                   width=400, height=400):
@@ -509,7 +478,7 @@ class Visualise_Sim(object):
         
         """
         if not atoms_df is None:
-            self.add_atoms(atoms_df, type_map=type_map, spheres=spheres, alpha=alpha)
+            self.add_atoms(atoms_df, spheres=spheres, illustrate=illustrate)
         if not sim_box is None:
             self.add_box(sim_box[0], sim_box[1])
         if not axes is None:

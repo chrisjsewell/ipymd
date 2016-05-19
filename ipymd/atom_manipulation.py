@@ -9,6 +9,95 @@ import pandas as pd
 import numpy as np
 from scipy.spatial import ConvexHull
 
+from chemlab.db import ChemlabDB
+#have to convert from nm to angstrom
+vdw_dict = dict((k,v*10) for k,v in ChemlabDB().get("data", 'vdwdict').iteritems())
+
+# Maps
+default_atom_map = {
+    "C": "gray",
+    "O": "red",
+    "H": "white",
+
+    "N": "light_blue",
+    "S": "gold",
+    "Cl": "green",
+    "B": " green",
+    
+    "P": "orange",
+    "Fe": "orange",
+    "Ba": "orange",
+
+    "Na": "blue",
+    "Mg": "forest_green",
+    
+    "Zn": "brown",
+    "Cu": "brown",
+    "Ni": "brown",
+    "Br": "brown",
+
+    "Ca": "dark_gray",
+    "Mn": "dark_gray",
+    "Al": "dark_gray",
+    "Ti": "dark_gray",
+    "Cr": "dark_gray",
+    "Ag": "dark_gray",
+
+    "F": " goldenrod",    
+    "Si": "goldenrod",
+    "Au": "goldenrod",
+    
+    "I": "purple",
+        
+    "Li": "fire_brick",
+    "He": "pink",
+
+    "Xx": "deep_pink",
+}
+
+
+light_atom_map = {
+    "C": "gainsboro",
+    "O": "light_salmon",
+    "H": "snow",
+
+"N": " pale_turquoise",
+    "S": " light_goldenrod_yellow",
+    "Cl": "pale_green",
+    "B": " pale_green",
+    
+"P": "beige",
+    "Fe": "beige",
+    "Ba": "beige",
+
+"Na": "lavender",
+    "Mg": "aquamarine",
+    
+"Zn": "dark_salmon",
+    "Cu": "dark_salmon",
+    "Ni": "dark_salmon",
+    "Br": "dark_salmon",
+
+"Ca": "light_slate_gray",
+    "Mn": "light_slate_gray",
+    "Al": "light_slate_gray",
+    "Ti": "light_slate_gray",
+    "Cr": "light_slate_gray",
+    "Ag": "light_slate_gray",
+
+"F": " pale_goldenrod",    
+    "Si": "pale_goldenrod",
+    "Au": "pale_goldenrod",
+    
+"I": "lavender",
+    
+"Li": "light_coral",
+    "He": "light_pink",
+
+"Xx": "deep_pink",
+}
+
+
 class Atom_Manipulation(object):
     """ a class to manipulate atom data
     
@@ -51,8 +140,32 @@ class Atom_Manipulation(object):
         self._atom_df = self._original_atom_df.copy()
         
     def change_variables(self, map_dict, vtype='type'):
+        """ change particular variables """
         self._atom_df.replace({vtype:map_dict}, inplace=True)
 
+    def change_type_variable(self, atom_type, variable, value):
+        """ change particular variable for one atom type """
+        self._atom_df.loc[self._atom_df['type']==atom_type, variable] = value
+
+    def apply_colormap(self, colormap=default_atom_map):
+        """
+        colormap : dict
+           A dictionary mapping atom types to colors, in str format 
+           By default it is a default color scheme (light_atom_map also available).   
+        """
+        for key, val in colormap.iteritems():
+            self.change_type_variable(key, 'color', val)
+    
+    def apply_radiimap(self, radiimap=vdw_dict):
+        """
+        radii_map: dict
+           A dictionary mapping atom types to radii. The default is the
+           mapping contained in `chemlab.db.vdw.vdw_dict`
+        
+        """
+        for key, val in radiimap.iteritems():
+            self.change_type_variable(key, 'radius', val)
+        
     def filter_variables(self, values, vtype='type'):
         if isinstance(values, int):
             values = [values]
@@ -60,8 +173,8 @@ class Atom_Manipulation(object):
             values = [values]
         if isinstance(values, basestring):
             values = [values]
-        self._atom_df = self._atom_df[self._atom_df[vtype].isin(values)]
-
+        self._atom_df = self._atom_df[self._atom_df[vtype].isin(values)]        
+        
     def _pnts_in_pointcloud(self, points, new_pts):
         """2D or 3D
         
@@ -150,22 +263,21 @@ class Atom_Manipulation(object):
         
     def slice_x(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['xs']>=minval]
+            self._atom_df = self._atom_df[self._atom_df['xs']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['xs']<=maxval]
+            self._atom_df = self._atom_df[self._atom_df['xs']<=maxval].copy()
 
     def slice_y(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['ys']>=minval]
+            self._atom_df = self._atom_df[self._atom_df['ys']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['ys']<=maxval]
+            self._atom_df = self._atom_df[self._atom_df['ys']<=maxval].copy()
 
     def slice_z(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['zs']>=minval]
+            self._atom_df = self._atom_df[self._atom_df['zs']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['zs']<=maxval]
+            self._atom_df = self._atom_df[self._atom_df['zs']<=maxval].copy()
                                     
     #TODO slice along arbitrary direction
-                        
-       
+
