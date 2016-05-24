@@ -140,8 +140,8 @@ class Visualise_Sim(object):
           the color of the wireframe, in chemlab colors
           
         """
-        vectors = self._unit_conversion(vectors.copy(), 'distance')
-        origin = self._unit_conversion(origin.copy(), 'distance')
+        vectors = self._unit_conversion(np.array(vectors), 'distance')
+        origin = self._unit_conversion(np.array(origin), 'distance')
         color = str_to_colour(color)
         
         self._boxes.append([vectors, origin, color, width])

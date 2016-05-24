@@ -142,7 +142,7 @@ class LAMMPS_Output(DataInput):
         dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
     """
-    def __init__(self, sys_path='', atom_path=''):
+    def __init__(self, atom_path='', sys_path=''):
         """
         Data divided into two levels; sytem and atom
         
@@ -158,7 +158,8 @@ class LAMMPS_Output(DataInput):
             dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
         """
-        assert os.path.exists(sys_path) or not sys_path, 'sys_path does not exist'
+        if sys_path:
+            assert os.path.exists(sys_path), 'sys_path does not exist'
         self._sys_path = sys_path
         
         if '*' in atom_path:            
@@ -166,8 +167,9 @@ class LAMMPS_Output(DataInput):
             self._atom_path = glob.glob(atom_path)
             assert len(self._atom_path)>0, 'atom_path does not exist'
             self._atom_path.sort(key=natural_keys)
-        else:        
-            assert os.path.exists(atom_path) or not atom_path, 'atom_path does not exist'
+        else:   
+            if atom_path:
+                assert os.path.exists(atom_path), 'atom_path does not exist'
             self._single_atom_file = True
             self._atom_path = atom_path
         
@@ -360,7 +362,7 @@ class LAMMPS_Output(DataInput):
         xy, xz, yz = 0., 0., 0.
         
         line = self._skiplines(f, 1) # to time
-        line = self._skiplines(f, 2) # to nummper of atoms
+        line = self._skiplines(f, 2) # to number of atoms
         line = self._skiplines(f, 2) # to simulation box
         xlo_bound, xhi_bound = [float(line.split()[0]), float(line.split()[1])]
         if len(line.split()) == 3:

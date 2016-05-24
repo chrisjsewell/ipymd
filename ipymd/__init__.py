@@ -6,13 +6,20 @@ Created on Sun May  1 22:46:22 2016
 """
 # so tab completion works
 from . import data_input
+from . import data_output
 from . import visualise_sim
 from . import atom_manipulation
 from . import atom_analysis
 
+from ._version import __version__
+
+def version():
+    return __version__
+
 import os
 import inspect
 from . import test_data
+
 def get_test_path(data, check_exists=False):
     """return a directory path to the test data
 

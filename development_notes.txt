@@ -92,12 +92,5 @@ traitlets                 4.2.1                    py27_0    defaults
 wheel                     0.29.0                   py27_0    defaults
 zlib                      1.2.8                         0    defaults
 
-working test code:
-from ipymd.md_data import LAMMPS_Data
-from ipymd.visualise_sim import Visualise_Sim
-data = LAMMPS_Data(
-    sys_path='ipymd/lammps_test_data/system.dump',
-    atom_path='ipymd/lammps_test_data/atom_dump/atoms_*.dump')
-vis = Visualise_Sim()
-vis.visualise(data.get_atom_data(1)[0], type_dict={1:'Fe'})
+
 
