@@ -10,11 +10,15 @@ from . import data_output
 from . import visualise_sim
 from . import atom_manipulation
 from . import atom_analysis
+from . import _colors
 
 from ._version import __version__
 
 def version():
     return __version__
+         
+def available_colors():
+    return _colors.col_dict.copy()
 
 import os
 import inspect

@@ -8,6 +8,8 @@ import math
 import pandas as pd
 import numpy as np
 from scipy.spatial import ConvexHull
+from matplotlib import cm
+from matplotlib.colors import Normalize
 
 from chemlab.db import ChemlabDB
 #have to convert from nm to angstrom
@@ -102,15 +104,15 @@ class Atom_Manipulation(object):
     """ a class to manipulate atom data
     
     atom_df : pandas.DataFrame
-        containing columns; xs, ys, zs, type
+        containing columns; x, y, z, type
     """
     def __init__(self, atom_df):
         """ a class to manipulate atom data
         
         atom_df : pandas.DataFrame
-            containing columns; xs, ys, zs, type
+            containing columns; x, y, z, type
         """
-        assert set(atom_df.columns).issuperset(['xs','ys','zs','type'])
+        assert set(atom_df.columns).issuperset(['x','y','z','type'])
         
         self._atom_df_new = atom_df.copy()
         self._atom_df_old = None
@@ -156,6 +158,25 @@ class Atom_Manipulation(object):
         for key, val in colormap.iteritems():
             self.change_type_variable(key, 'color', val)
     
+    def color_by_variable(self, variable, cmap='jet', minv=None, maxv=None):
+        """change colors to map 
+        
+        variable : string
+            a coloumn of the dataframe that contains numbers by which to color
+        cmap : string
+            the colormap to apply, see available at http://matplotlib.org/examples/color/colormaps_reference.html
+        minv, maxv : float
+            optional min, max cmap value, otherwise take min, max value found in column
+            
+        """
+        colormap = cm.get_cmap(cmap)
+        var = self._atom_df[variable]
+        minval = var.min() if minv is None else minv
+        maxval = var.max() if maxv is None else maxv
+        norm = Normalize(minval, maxval,clip=True)
+        
+        self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
+
     def apply_radiimap(self, radiimap=vdw_dict):
         """
         radii_map: dict
@@ -194,7 +215,7 @@ class Atom_Manipulation(object):
 
         points : np.array((N,3))        
         """ 
-        inside = self._pnts_in_pointcloud(points, self._atom_df[['xs','ys','zs']].values)
+        inside = self._pnts_in_pointcloud(points, self._atom_df[['x','y','z']].values)
         self._atom_df = self._atom_df[inside]
 
     def filter_inside_box(self, vectors, origin=np.zeros(3)):
@@ -241,7 +262,11 @@ class Atom_Manipulation(object):
         self.filter_inside_pts(points)
 
     def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1))):
-        """ repeat atoms along vectors a, b, c  """
+        """ repeat atoms along vectors a, b, c 
+
+        vectors : np.array((3,3))
+            a,b,c vectors        
+        """
         xreps,yreps,zreps = repetitions
         if isinstance(xreps, int):
             xreps = (0,xreps)
@@ -255,7 +280,7 @@ class Atom_Manipulation(object):
             for j in range(yreps[0], yreps[1]+1):
                 for k in range(zreps[0], zreps[1]+1):
                     atom_copy = self._atom_df.copy()
-                    atom_copy[['xs','ys','zs']] = (atom_copy[['xs','ys','zs']]
+                    atom_copy[['x','y','z']] = (atom_copy[['x','y','z']]
                                 + i*vectors[0]  + j*vectors[1] + k*vectors[2])
                     dfs.append(atom_copy)
         self._atom_df = pd.concat(dfs)
@@ -263,21 +288,22 @@ class Atom_Manipulation(object):
         
     def slice_x(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['xs']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['x']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['xs']<=maxval].copy()
+            self._atom_df = self._atom_df[self._atom_df['x']<=maxval].copy()
 
     def slice_y(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['ys']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['y']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['ys']<=maxval].copy()
+            self._atom_df = self._atom_df[self._atom_df['y']<=maxval].copy()
 
     def slice_z(self, minval=None, maxval=None):
         if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['zs']>=minval].copy()
+            self._atom_df = self._atom_df[self._atom_df['z']>=minval].copy()
         if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['zs']<=maxval].copy()
+            self._atom_df = self._atom_df[self._atom_df['z']<=maxval].copy()
                                     
     #TODO slice along arbitrary direction
+                                    
 

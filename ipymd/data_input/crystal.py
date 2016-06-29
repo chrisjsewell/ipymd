@@ -96,7 +96,7 @@ class Crystal(DataInput):
                         atoms.append([aid,atype,x,y,z])
                         aid+=1
                 
-        self._atoms = pd.DataFrame(atoms,columns=['id','type','xs','ys','zs'])
+        self._atoms = pd.DataFrame(atoms,columns=['id','type','x','y','z'])
         
         if mass_map:
             self._atoms['mass'] = np.nan

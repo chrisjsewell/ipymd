@@ -53,22 +53,45 @@ class CIF(DataInput):
         file_path : str
             path to file
             
-        """  
-        data = self._read_cif_file(file_path)
-        atoms_df, vectors = self._convert_cif_data(data, ignore_overlaps)
+        """ 
+        self._file_path = file_path
+        self._ignore_overlaps = ignore_overlaps
+    
+    def get_atom_data(self, override_abc=[]):
+        """ return atom data 
+        
+         override_abc : [] or [a,b,c]
+             if not empty, will override a, b, c length parameters given in file
+        
+        """
+        cif_data = self._read_cif_file(self._file_path)
+        if len(override_abc)==3:
+            cif_data['_cell_length_a'] = override_abc[0]
+            cif_data['_cell_length_b'] = override_abc[1]
+            cif_data['_cell_length_c'] = override_abc[2]
+            cif_data['_cell_volume'] = np.nan
+            
+        atoms_df, vectors = self._convert_cif_data(cif_data, self._ignore_overlaps)
         self._add_colors(atoms_df)
         self._add_radii(atoms_df)
-    
-        self._atoms_df = atoms_df
-        self._vectors = vectors
-    
-    def get_atom_data(self):
-        """ return atom data """
-        return self._atoms_df.copy()
+        return atoms_df
 
-    def get_simulation_box(self):
-        """ return list of coordinates origin & [a,b,c] """
-        return self._vectors
+    def get_simulation_box(self, override_abc=[]):
+        """ return list of coordinates origin & [a,b,c]  
+        
+         override_abc : [] or [a,b,c]
+             if not empty, will override a, b, c length parameters given in file
+        
+        """
+        cif_data = self._read_cif_file(self._file_path)
+        if len(override_abc)==3:
+            cif_data['_cell_length_a'] = override_abc[0]
+            cif_data['_cell_length_b'] = override_abc[1]
+            cif_data['_cell_length_c'] = override_abc[2]
+            cif_data['_cell_volume'] = np.nan
+
+        atoms_df, vectors = self._convert_cif_data(cif_data, self._ignore_overlaps)
+        return vectors
 
     #TODO read and deal with occupancy values (and overlapping atoms)        
     def _read_cif_file(self, file_path):
@@ -330,7 +353,7 @@ class CIF(DataInput):
         
         # Use the volume to check if we did the vectors right.
         V = ax*by*cz
-        if ( abs(V - volume) > 0.1):
+        if ( abs(V - volume) > 0.1) and not np.isnan(volume):
             raise Exception('volume does not match that calculated from primitive vectors')
         
         a = np.array([ax,0,0])
@@ -361,7 +384,7 @@ class CIF(DataInput):
         
             atoms[i] = (label, xn, yn, zn,oc)
         
-        df = pd.DataFrame(atoms, columns=['type', 'xs', 'ys', 'zs','occupancy'])
+        df = pd.DataFrame(atoms, columns=['type', 'x', 'y', 'z','occupancy'])
     
         return df, (np.array([a,b,c]),np.array([0.,0.,0.]))   
         

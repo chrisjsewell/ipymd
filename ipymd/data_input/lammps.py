@@ -77,9 +77,9 @@ class LAMMPS_Input(DataInput):
                     continue
 
         if atom_style == 'atomic':
-            atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'xs', 'ys', 'zs'])
+            atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'x', 'y', 'z'])
         elif atom_style == 'charge':
-            atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'q', 'xs', 'ys', 'zs'])
+            atom_df = pd.DataFrame(atom_data,columns=['id', 'type', 'q', 'x', 'y', 'z'])
 
         self._add_colors(atom_df)
         self._add_radii(atom_df)
@@ -137,7 +137,7 @@ class LAMMPS_Output(DataInput):
         
     Atom level data created with `dump`, e.g.;
     
-        dump atom_info all custom 100 atom.dump id type xs ys zs mass q
+        dump atom_info all custom 100 atom.dump id type x y z mass q
         OR (file per configuration)
         dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
@@ -153,7 +153,7 @@ class LAMMPS_Output(DataInput):
             
         Atom level data created with `dump`, e.g.;
         
-            dump atom_info all custom 100 atom.dump id type xs ys zs mass q
+            dump atom_info all custom 100 atom.dump id type x y z mass q
             OR (file per configuration)
             dump atom_info all custom 100 atom_*.dump id type xs ys zs mass q
 
@@ -257,13 +257,16 @@ class LAMMPS_Output(DataInput):
             atoms.append(np.array(line.split(),dtype=float))
         atoms_df = pd.DataFrame(atoms, columns=headers)
         
+        #fix legacy issue
+        atoms_df.rename(columns={'xs': 'x', 'ys': 'y', 'zs':'z'}, inplace=True)
+
         if unscale_coords:
             self._unscale_coords(atoms_df, 
                                  xlo_bound, xhi_bound, 
                                  ylo_bound, yhi_bound, 
                                  zlo_bound, zhi_bound, 
                                  xy, xz, yz)        
-        
+
         return atoms_df
         
     def _unscale_coords(self, atoms_df, 
@@ -282,11 +285,11 @@ class LAMMPS_Output(DataInput):
         a,b,c = np.array([[xhi-xlo,0.,0.],[xy,yhi-ylo,0.],[xz,yz,zhi-zlo]])
         origin = np.array([xlo,ylo,zlo])
         
-        new_coords = (np.array([atoms_df['xs'].values]).transpose() * a + 
-               np.array([atoms_df['ys'].values]).transpose() * b + 
-               np.array([atoms_df['zs'].values]).transpose() * c + 
+        new_coords = (np.array([atoms_df['x'].values]).transpose() * a + 
+               np.array([atoms_df['y'].values]).transpose() * b + 
+               np.array([atoms_df['z'].values]).transpose() * c + 
                origin) 
-        atoms_df[['xs','ys','zs']] = new_coords
+        atoms_df[['x','y','z']] = new_coords
 
     def get_atom_timestep(self, step):
         """ return simulation step, according to atom data """

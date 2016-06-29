@@ -32,6 +32,8 @@ Camera.orbit_z = orbit_z
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops
 
+import matplotlib.pyplot as plt
+
 # in order to set atoms as transparent
 from .chemlab_patch.atom import AtomRenderer
 from .chemlab_patch.triangle import TriangleRenderer
@@ -93,22 +95,22 @@ class Visualise_Sim(object):
 
         atoms_df : pandas.DataFrame
             a table of atom data, must contain columns;  
-            xs, yx, zs, radius, color and transparency
+            x, y, z, radius, color and transparency
         spheres : bool
             whether the atoms are rendered as spheres or points
         illustrate : str
             if True, atom shading is more indicative of an illustration
         """
-        assert set(['xs','ys','zs','radius','color','transparency']).issubset(set(atoms_df.columns))
+        assert set(['x','y','z','radius','color','transparency']).issubset(set(atoms_df.columns))
         
-        r_array = np.array(atoms_df[['xs','ys','zs']])
+        r_array = np.array(atoms_df[['x','y','z']])
         r_array = self._unit_conversion(r_array, 'distance')
         
         radii = np.array(atoms_df['radius'])
         radii = self._unit_conversion(radii, 'distance')
         
         cols = atoms_df['color'].apply(
-                lambda x: str_to_colour(x) if isinstance(x,basestring) else x).tolist()
+                lambda x: str_to_colour(x) if isinstance(x,basestring) else list(x) + [255]).tolist()
         if None in cols:
             raise ValueError('one or more colors not found')
         cols = np.array(cols)
@@ -155,15 +157,15 @@ class Visualise_Sim(object):
         """ add wireframed hexagonal prism to visualisation
         
        vectors : np.ndarray((2,3), dtype=float)
-          The three vectors representing the orthogonal, a,c lattices.
+          The two vectors representing the orthogonal a,c directions.
        origin : np.ndarray((3,3), dtype=float), default to zero
-          The origin of the box.
+          The origin of the hexagon (representing center of hexagon)
         color : str
           the color of the wireframe, in chemlab colors
           
         """
-        vectors = self._unit_conversion(vectors.copy(), 'distance')
-        origin = self._unit_conversion(origin.copy(), 'distance')
+        vectors = self._unit_conversion(np.array(vectors), 'distance')
+        origin = self._unit_conversion(np.array(origin), 'distance')
         color = str_to_colour(color)
         
         self._hexagons.append([vectors, origin, color, width])
@@ -192,7 +194,7 @@ class Visualise_Sim(object):
         """ add flat plane to visualisation
         
        vectors : np.ndarray((2,3), dtype=float)
-          The three vectors representing the edges of the plane.
+          The two vectors representing the edges of the plane.
        origin : np.ndarray((3,3), dtype=float), default to zero
           The origin of the plane.
        rev_normal : bool
@@ -201,8 +203,8 @@ class Visualise_Sim(object):
           the color of the plane, in chemlab colors
           
         """
-        vectors = self._unit_conversion(vectors.copy(), 'distance')
-        origin = self._unit_conversion(origin.copy(), 'distance')
+        vectors = self._unit_conversion(np.array(vectors), 'distance')
+        origin = self._unit_conversion(np.array(origin), 'distance')
 
         c = str_to_colour(color)
         colors = np.array([c,c,c,c,c,c])
@@ -303,11 +305,60 @@ class Visualise_Sim(object):
         
         return final_img
 
+    def draw_colormap(self, image, cmap='jet',minv=0, maxv=1, text=None,
+                      left=0.5, bottom=0., width=0.2, height=0.05,
+                      size=(300,300),dpi=300):
+        """ draw a color map on the image
+        
+        image : PIL.Image
+        cmap : string
+            the colormap to display, see available at http://matplotlib.org/examples/color/colormaps_reference.html
+        minv, maxv : float
+            min, max cmap value
+        text : string
+            text to display below colormap
+        left, bottom, width, height
+            where to place the colormap        
+
+        Return
+        ------
+        image : PIL.Image
+
+        """        
+        fig, ax = plt.subplots(1, 1)
+        
+        # Add the colorbar axes anywhere in the figure. 
+        cbar_ax = fig.add_axes([left,bottom,width,height])
+        #NB: this is another way of doing it
+            #from mpl_toolkits.axes_grid1 import make_axes_locatable
+            #divider = make_axes_locatable(ax)
+            #cax = divider.append_axes("right", size="5%", pad=0.2)
+        
+        
+        im = ax.imshow(image,cmap=cmap,vmin=minv,vmax=maxv)
+        ax.get_xaxis().set_visible(False)
+        ax.get_yaxis().set_visible(False)
+        ax.set_frame_on(False)
+        
+        cb = fig.colorbar(im, cax=cbar_ax,orientation='horizontal')
+        cb.set_ticks([minv,maxv])
+        if text is not None:
+            cbar_ax.set_xlabel(text,fontsize='medium')
+        buf = BytesIO()
+        fig.savefig(buf, dpi=dpi,format='png',bbox_inches='tight')
+        buf.seek(0)
+        im = Image.open(buf)
+        im.thumbnail(size,Image.ANTIALIAS)
+        buf.close()
+        plt.close(fig)
+        
+        return im
+    
     # orthogonal perspective
     def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., width=400, height=400):
         """ get image of atom configuration
         
-        requires atoms to have, at least variables xs, yx, zs and type
+        requires atoms to have, at least variables x, y, z and type
         
         Parameters
         ----------
@@ -437,6 +488,8 @@ class Visualise_Sim(object):
         images : list or single PIL.Image
         columns : int
             number of image columns 
+        cmap : (string, float, float)
+            (cmap, cmin, cmax) if set places colormap at right of images
         
         Returns
         -------
@@ -463,7 +516,7 @@ class Visualise_Sim(object):
         b = BytesIO()
         image.save(b, format='png')
         data = b.getvalue()
-        del b
+        b.close() #del b
         
         return ipy_Image(data=data)
 
