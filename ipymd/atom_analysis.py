@@ -10,35 +10,41 @@ Created on Tue May 17 14:19:07 2016
 import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from collections import Counter
-import pandas as pd
+from IPython.core.display import clear_output
 
 from .atom_manipulation import Atom_Manipulation
 
-def _chain(start, nodes,nondirectional=True):
-    """a recursive function to compute the maximum unbroken chain given a set of nodes
+def _createTreeFromEdges(edges):
+    """    
+    e.g. _createTreeFromEdges([[1,2],[0,1],[2,3],[8,9],[0,3]])
+     -> {0: [1], 1: [2, 0], 2: [1, 3], 3: [2,0], 8: [9], 9: [8]}
+    """
+    tree = {}
+    for v1, v2 in edges:
+        tree.setdefault(v1, []).append(v2)
+        tree.setdefault(v2, []).append(v1)
+    return tree
     
-    e.g. start=[0,1], nodes=[[1,2],[0,1],[2,3],[8,9]]
-        -> [[0,1],[1,2],[2,3]]
-        
-    nondirectional : bool
-        whether nodes are directional, e,g, if [0,2],[1,2] can form a chain
+def _longest_path(start,tree):
+    """a recursive function to compute the maximum unbroken chain given a tree
+    
+    e.g. start=0, tree={0: [1], 1: [2, 0], 2: [1, 3], 3: [2,0], 8: [9], 9: [8]}
+     -> [0, 1, 2, 3,0]
     
     """
-    remaining = list(nodes)
-    if nondirectional and start not in remaining:
-        del remaining[remaining.index(sorted(start))]
-    else:
-        del remaining[remaining.index(start)]
-    possibles = [x for x in remaining if start[1] == x[0]] 
-    if nondirectional:
-        possibles += [[x[1],x[0]] for x in remaining if start[1] == x[1]]
-    maxchain = []
-    for c in possibles:
-        l = _chain(c, remaining,nondirectional)
-        if len(l) > len(maxchain):
-            maxchain = l
-    return [start] + maxchain
-    
+    if not tree.has_key(start):
+        return []
+    new_tree = tree.copy()
+    #nodes = new_tree.pop(start)
+    nodes = new_tree[start]
+    new_tree[start] = []
+    path = []
+    for node in nodes:
+        new_path = _longest_path(node, new_tree)
+        if len(new_path) > len(path):
+            path = new_path
+    path.insert(0,start)
+    return path    
 
 class Atom_Analysis(object):
     """ a class to analyse atom data
@@ -190,7 +196,7 @@ class Atom_Analysis(object):
     #https://www.quora.com/Given-a-set-of-atomic-types-and-coordinates-from-an-MD-simulation-is-there-a-good-algorithm-for-determining-its-likely-crystal-structure?__filter__=all&__nsrc__=2&__snid3__=179254150
     #TODO add adaptive cna http://iopscience.iop.org/article/10.1088/0965-0393/20/4/045021/pdf
     def common_neighbour_analysis(self, atoms_df, upper_bound=4, max_neighbours=24,
-                                  repeat_vectors=None, leafsize=100):
+                                  repeat_vectors=None, leafsize=100, ipython_progress=False):
         """ compute atomic environment of each atom in atoms_df
         
         Based on Faken, Daniel and Jónsson, Hannes,
@@ -205,6 +211,8 @@ class Atom_Analysis(object):
         
         repeat_vectors : np.array((3,3))
             include consideration of repeating boundary idenfined by a,b,c vectors
+        ipython_progress : bool
+            print progress to IPython Notebook
 
         Returns
         -------
@@ -220,6 +228,9 @@ class Atom_Analysis(object):
             lattice_df = repeat.df
         else:
             lattice_df = df
+
+        if ipython_progress:
+            print('creating nearest neighbours dictionary')
         
         # create nearest neighbours dictionary
         lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
@@ -232,11 +243,14 @@ class Atom_Analysis(object):
             assert dists[0]==0, dists
             nn_ids[ids[0]] = ids[mask]
             #nn_dists[ids[0]] = dists[mask]
-    
+            
         jkls = {}
         for lid, nns in nn_ids.iteritems():
             if lid > max_id:
                 continue
+            if ipython_progress:
+                clear_output()
+                print('assessing nearest neighbours: {0} of {1}'.format(lid,max_id))
             jkls[lid] = []
             for nn in nns:
                 # j is number of shared nearest neighbours
@@ -250,9 +264,10 @@ class Atom_Analysis(object):
                             nn_bonds.append(sorted((common_nn, nn_bond)))
                 k = len(nn_bonds)
                 # l is longest chain of nearest neighbour bonds
+                tree = _createTreeFromEdges(nn_bonds)
                 chain_lengths = [0]
-                for nn_bond in nn_bonds:
-                    chain_lengths.append(len(_chain(nn_bond, nn_bonds)))
+                for node in tree.iterkeys():
+                    chain_lengths.append(len(_longest_path(node, tree))-1)
                 l = max(chain_lengths)
     
                 jkls[lid].append('{0},{1},{2}'.format(j,k,l))
@@ -261,10 +276,13 @@ class Atom_Analysis(object):
     
         df['cna'] = [jkls[key] for key in sorted(jkls)]
         
+        if ipython_progress:
+            clear_output()
+        
         return df
         
     def cna_sum(self, atoms_df, upper_bound=4, max_neighbours=24,
-                    repeat_vectors=None, leafsize=100):
+                    repeat_vectors=None, leafsize=100, ipython_progress=False):
         """ compute summed atomic environments of each atom in atoms_df
         
         Based on Faken, Daniel and Jónsson, Hannes,
@@ -279,7 +297,8 @@ class Atom_Analysis(object):
         - Icosahedral = 12 x 5,5,5
         """
         df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
-                                            repeat_vectors, leafsize=leafsize)
+                                            repeat_vectors, leafsize=leafsize, 
+                                            ipython_progress=ipython_progress)
         
         cnas = df.cna.values
         return sum(cnas,Counter())
