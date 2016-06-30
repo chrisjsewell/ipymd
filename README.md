@@ -19,6 +19,7 @@ It has been created with the goal to be:
 
 It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) package, that is an API layer on top of OpenGL. It will also aim to parse data in simple formats, such as [pandas](http://pandas.pydata.org/) dataframes, which are easy to create and use independantly from this package, in order to extend its functionality.  
 
+
 ## User Tutorial
 
 ### Instillation of Dependant Packages
@@ -34,7 +35,7 @@ import ipymd
 print ipymd.version()
 ```
 
-    0.0.2
+    0.0.3dev
 
 
 ### Basic Atom Creation and Visualisation
@@ -74,7 +75,7 @@ img1
 
 
 
-    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x1177C2950>
+    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x1177C4B48>
 
 
 
@@ -124,7 +125,7 @@ This class allows atoms to be created in ordered crystal, as defined by their sp
 ```python
 data = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.54, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 
 sim_abc, sim_origin = data.get_simulation_box()
@@ -209,7 +210,7 @@ A dataframe is available which lists the alternative names for each space group:
 
 ```python
 df = ipymd.data_input.crystal.get_spacegroup_df()
-df.loc[[1,225]]
+df.loc[[1,194,225]]
 ```
 
 
@@ -251,6 +252,17 @@ df.loc[[1,225]]
       <td>$C_1^1$</td>
       <td>1s</td>
       <td>$(a/b/c)\cdot 1$</td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <th>194</th>
+      <td>hexagonal</td>
+      <td>6/m 2/m 2/m</td>
+      <td>P63/mmc</td>
+      <td>P 63/m 2/m 2/c</td>
+      <td>$D_{6h}^4$</td>
+      <td>88a</td>
+      <td>$(c:(a/a))\cdot m:6_3\cdot m$</td>
       <td>-</td>
     </tr>
     <tr>
@@ -403,7 +415,7 @@ The atoms Dataframe is already very easy to manipulate using the standard [panda
 ```python
 data = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.54, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 
 manipulate_atoms = ipymd.atom_manipulation.Atom_Manipulation
@@ -454,7 +466,7 @@ The two examples below show computation of the coordination of Na, w.r.t Cl, in 
 ```python
 data = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.54, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 df = data.get_atom_data()
 df['coord'] = 0
@@ -485,10 +497,18 @@ img = vis.draw_colormap(img,minv=3,maxv=7,text='Na Coordination')
 vis.visualise(img)
 ```
 
+    //anaconda/envs/ipymd/lib/python2.7/site-packages/pandas/core/generic.py:2177: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame.
+    Try using .loc[row_indexer,col_indexer] = value instead
+    
+    See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+      self[name] = value
 
 
 
-![png](images/output_43_0.png)
+
+
+![png](images/output_43_1.png)
 
 
 
@@ -496,7 +516,7 @@ vis.visualise(img)
 ```python
 data = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.54, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 df = data.get_atom_data()
 
@@ -532,7 +552,7 @@ vis.visualise(img)
 import numpy as np
 data1 = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.54, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 df1 = data1.get_atom_data()
 
@@ -541,7 +561,7 @@ print ('Average distance to nearest atom (identical)',
 
 data2 = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
-    225, cellpar=[.541, .54, .54, 90, 90, 90], 
+    225, cellpar=[5.41, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 df2 = data2.get_atom_data()
 
@@ -552,6 +572,156 @@ print ('Average distance to nearest atom (different)',
 
     ('Average distance to nearest atom (identical)', 0.0)
     ('Average distance to nearest atom (different)', 0.022499999999999343)
+
+
+#### Common Neighbour Analysis (CNA)
+
+CNA ([Honeycutt and Andersen, J. Phys. Chem. 91, 4950](http://dx.doi.org/10.1021/j100303a014)) is an algorithm to compute a signature for pairs of atoms, which is designed to characterize the local structural environment. Typically, CNA is used as an effective filtering method to classify atoms in crystalline systems ([Faken and Jonsson, Comput. Mater. Sci. 2, 279](http://dx.doi.org/10.1016/0927-0256(94%2990109-0)), with the goal to get a precise understanding of which atoms are associated with which phases, and which are associated with defects.
+
+Common signatures are:
+
+- FCC = 12 x 4,2,1
+- HCP = 6 x 4,2,1 & 6 x 4,2,2
+- BCC = 6 x 6,6,6 & 8 x 4,4,4
+- Diamond = 12 x 5,4,3 & 4 x 6,6,3
+- icosahedral = 12 x 5,5,5
+
+
+
+```python
+data = ipymd.data_input.crystal.Crystal(
+    [[0.0, 0.0, 0.0]], ['Al'], 
+    225, cellpar=[4.05, 4.05, 4.05, 90, 90, 90], 
+    repetitions=[5, 5, 5])
+fcc_vector = data.get_simulation_box()[0]
+fcc_df = data.get_atom_data()
+
+data = ipymd.data_input.crystal.Crystal(
+    [[0.33333,0.66667,0.25000]], ['Mg'], 
+    194, cellpar=[3.21, 3.21, 5.21, 90, 90, 120], 
+    repetitions=[5,5,5])
+hcp_vector = data.get_simulation_box()[0]
+hcp_df = data.get_atom_data()
+
+data = ipymd.data_input.crystal.Crystal(
+    [[0,0,0]], ['Fe'], 
+    229, cellpar=[2.866, 2.866, 2.866, 90, 90, 90], 
+    repetitions=[5,5,5])
+bcc_vector = data.get_simulation_box()[0]
+bcc_df = data.get_atom_data()
+
+data = ipymd.data_input.crystal.Crystal(
+    [[0,0,0]], ['C'], 
+    227, cellpar=[3.57, 3.57, 3.57, 90, 90, 90], 
+    repetitions=[1,1,1])
+diamond_vector = data.get_simulation_box()[0]
+diamond_df = data.get_atom_data()
+```
+
+
+```python
+analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
+```
+
+
+
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>id</th>
+      <th>type</th>
+      <th>x</th>
+      <th>y</th>
+      <th>z</th>
+      <th>transparency</th>
+      <th>color</th>
+      <th>radius</th>
+      <th>cna</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>1</td>
+      <td>Mg</td>
+      <td>-0.000016</td>
+      <td>1.853304</td>
+      <td>1.3025</td>
+      <td>1</td>
+      <td>light_salmon</td>
+      <td>1</td>
+      <td>{u'4,2,2': 4, u'4,2,1': 8}</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2</td>
+      <td>Mg</td>
+      <td>1.605016</td>
+      <td>0.926638</td>
+      <td>3.9075</td>
+      <td>1</td>
+      <td>light_salmon</td>
+      <td>1</td>
+      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>3</td>
+      <td>Mg</td>
+      <td>-0.000016</td>
+      <td>1.853304</td>
+      <td>6.5125</td>
+      <td>1</td>
+      <td>light_salmon</td>
+      <td>1</td>
+      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>4</td>
+      <td>Mg</td>
+      <td>1.605016</td>
+      <td>0.926638</td>
+      <td>9.1175</td>
+      <td>1</td>
+      <td>light_salmon</td>
+      <td>1</td>
+      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>5</td>
+      <td>Mg</td>
+      <td>-0.000016</td>
+      <td>1.853304</td>
+      <td>11.7225</td>
+      <td>1</td>
+      <td>light_salmon</td>
+      <td>1</td>
+      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+
+
+
+```python
+analysis= ipymd.atom_analysis.Atom_Analysis()
+print analysis.cna_sum(fcc_df,repeat_vectors=fcc_vector)
+print analysis.cna_sum(hcp_df,repeat_vectors=hcp_vector)
+print analysis.cna_sum(bcc_df,repeat_vectors=bcc_vector)
+print analysis.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
+```
+
+    Counter({'4,2,1': 6000})
+    Counter({'4,2,1': 1946, '4,2,2': 1054})
+    Counter({'6,6,6': 2000, '4,4,4': 1500})
+    Counter({'5,4,3': 96, '6,6,3': 32})
 
 
 ### System Analysis
@@ -677,4 +847,4 @@ ax.grid()
 ```
 
 
-![png](images/output_52_0.png)
+![png](images/output_57_0.png)

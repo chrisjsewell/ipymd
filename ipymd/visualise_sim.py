@@ -191,7 +191,7 @@ class Visualise_Sim(object):
 
     def add_plane(self, vectors, origin=np.zeros(3), rev_normal=False, 
                   color='red', alpha=1.):
-        """ add flat plane to visualisation
+        """ add square plane to visualisation
         
        vectors : np.ndarray((2,3), dtype=float)
           The two vectors representing the edges of the plane.

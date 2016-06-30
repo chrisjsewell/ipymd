@@ -257,7 +257,7 @@ class Atom_Manipulation(object):
                          [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]]) 
         
         #TODO think about using np.einsum or something more efficient?
-        if len(np.asarray(vector))==1:
+        if len(np.asarray(vector).shape)==1:
             return np.dot(rotation_matrix, vector)
         else:
             new_vectors = []
@@ -279,11 +279,13 @@ class Atom_Manipulation(object):
         points = np.array(points) + origin
         self.filter_inside_pts(points)
 
-    def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1))):
+    def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1)),original_first=False):
         """ repeat atoms along vectors a, b, c 
 
         vectors : np.array((3,3))
-            a,b,c vectors        
+            a,b,c vectors  
+        original_first: bool
+            if True, the original atoms will be first in the DataFrame
         """
         xreps,yreps,zreps = repetitions
         if isinstance(xreps, int):
@@ -293,10 +295,15 @@ class Atom_Manipulation(object):
         if isinstance(zreps, int):
             zreps = (0,zreps)
 
-        dfs = []        
+        dfs = []
+        if original_first:
+            dfs.append(self._atom_df.copy())            
+            
         for i in range(xreps[0], xreps[1]+1):
             for j in range(yreps[0], yreps[1]+1):
                 for k in range(zreps[0], zreps[1]+1):
+                    if i==0 and j==0 and k==0 and original_first:
+                        continue
                     atom_copy = self._atom_df.copy()
                     atom_copy[['x','y','z']] = (atom_copy[['x','y','z']]
                                 + i*vectors[0]  + j*vectors[1] + k*vectors[2])

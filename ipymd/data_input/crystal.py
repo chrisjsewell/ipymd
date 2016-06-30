@@ -50,7 +50,7 @@ class Crystal(DataInput):
         repetitions :
             Repetition of the unit cell in each direction
         cellpar :
-            Unit cell parameters (in nm and degrees)
+            Unit cell parameters (in Angstroms and degrees)
         mass_map : dict of atom masses
             mapping of atom masses to atom types
         charge_map : dict of atom charges
@@ -68,7 +68,7 @@ class Crystal(DataInput):
         from ipymd.data_input import crystal
         c = crystal.Crystal([[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]],
             ['Na', 'Cl'], 225,
-            cellpar = [.54, .54, .54, 90, 90, 90],
+            cellpar = [5.4, 5.4, 5.4, 90, 90, 90],
             repetitions = [5, 5, 5])
         c.get_atom_data()
         c.get_simulation_box()
@@ -82,8 +82,9 @@ class Crystal(DataInput):
         atoms = []
         aid = 1
         
-        # Unit cell parameters
-        a,b,c = cellpar_to_cell(cellpar) * 10.
+        # Unit cell parameters, have to convert to nm and back?
+        c1,c2,c3,c4,c5,c6 = cellpar 
+        a,b,c = cellpar_to_cell([c1/10.,c2/10.,c3/10.,c4,c5,c6]) * 10.
         
         self._sim_box = (np.array([a*nx, b*ny, c*nz]),np.array([0.,0.,0.]))
         
