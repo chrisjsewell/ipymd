@@ -230,11 +230,21 @@ class Atom_Manipulation(object):
         points = [origin, a, b, a+b, c, a+c, b+c, a+b+c]
         self.filter_inside_pts(points)
     
-    def _rotate(self, v, axis, theta):
+    def _rotate(self, vector, axis, theta):
+        """rotate the vector v clockwise about the given axis vector 
+        by theta degrees.
+        
+        e.g. df._rotate([0,1,0],[0,0,1],90) -> [1,0,0]
+        
+        vector : iterable or list of iterables
+            vector to rotate [x,y,z] or [[x1,y1,z1],[x2,y2,z2]]
+        axis : iterable
+            axis to rotate around [x0,y0,z0] 
+        theta : float
+            rotation angle in degrees
         """
-        Return the rotation matrix associated with counterclockwise rotation about
-        the given axis by theta degrees.
-        """
+        theta = -1*theta
+        
         axis = np.asarray(axis)
         theta = np.asarray(theta)*np.pi/180.
         axis = axis/math.sqrt(np.dot(axis, axis))
@@ -244,8 +254,16 @@ class Atom_Manipulation(object):
         bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
         rotation_matrix = np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
                          [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
-                         [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])    
-        return np.dot(rotation_matrix, v)
+                         [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]]) 
+        
+        #TODO think about using np.einsum or something more efficient?
+        if len(np.asarray(vector))==1:
+            return np.dot(rotation_matrix, vector)
+        else:
+            new_vectors = []
+            for v in vector:
+               new_vectors.append(np.dot(rotation_matrix, v)) 
+            return np.asarray(new_vectors)
 
     def filter_inside_hexagon(self, vectors, origin=np.zeros(3)):
         """return only atoms inside hexagonal prism
@@ -306,4 +324,34 @@ class Atom_Manipulation(object):
                                     
     #TODO slice along arbitrary direction
                                     
+    def translate_atoms(self, vector):
+        """translate atoms by vector
+        
+        vector : list
+            x, y, z translation
+        
+        """
+        x,y,z = vector
+        self._atom_df = self._atom_df.copy()
+        self._atom_df.x += x
+        self._atom_df.y += y
+        self._atom_df.z += z
+    
+    def rotate_atoms(self, angle, vector=[1,0,0]):
+        """rotate the clockwise about the given axis vector 
+        by theta degrees.
+        
+        e.g. for rotate_atoms(90,[0,0,1]); [0,1,0] -> [1,0,0]
+        
+        angle : float
+            rotation angle in degrees
+        vector : iterable
+            vector to rotate around [x0,y0,z0] 
+
+        """
+        self._atom_df = self._atom_df.copy()
+        xyz = self._atom_df[['x','y','z']].values
+        new_xyz = self._rotate(xyz, vector,angle)
+        self._atom_df[['x','y','z']] = new_xyz
+        
 
