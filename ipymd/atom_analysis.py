@@ -11,6 +11,8 @@ import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from collections import Counter
 from IPython.core.display import clear_output
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 from .atom_manipulation import Atom_Manipulation
 
@@ -25,25 +27,28 @@ def _createTreeFromEdges(edges):
         tree.setdefault(v2, []).append(v1)
     return tree
     
-def _longest_path(start,tree):
+def _longest_path(start,tree,lastnode=None):
     """a recursive function to compute the maximum unbroken chain given a tree
     
     e.g. start=0, tree={0: [1], 1: [2, 0], 2: [1, 3], 3: [2,0], 8: [9], 9: [8]}
-     -> [0, 1, 2, 3,0]
+     -> [0, 1, 2, 3, 0]
     
     """
     if not tree.has_key(start):
         return []
     new_tree = tree.copy()
-    #nodes = new_tree.pop(start)
+    #nodes = new_tree.pop(start) # can use if don't want to complete loops
     nodes = new_tree[start]
     new_tree[start] = []
+        
     path = []
-    for node in nodes:
-        new_path = _longest_path(node, new_tree)
+    for node in nodes:        
+        if node==lastnode:
+            continue # can't go back to lastnode, e.g. 1->2->1
+        new_path = _longest_path(node,new_tree,start)
         if len(new_path) > len(path):
             path = new_path
-    path.insert(0,start)
+    path.append(start)
     return path    
 
 class Atom_Analysis(object):
@@ -302,3 +307,55 @@ class Atom_Analysis(object):
         
         cnas = df.cna.values
         return sum(cnas,Counter())
+    
+    def cna_plot(self, atoms_df, upper_bound=4, max_neighbours=24,
+                    repeat_vectors=None, leafsize=100, 
+                    barwidth=1, ipython_progress=False):
+        """ compute summed atomic environments of each atom in atoms_df
+        
+        Based on Faken, Daniel and Jónsson, Hannes,
+        'Systematic analysis of local atomic structure combined with 3D computer graphics',
+        March 1994, DOI: 10.1016/0927-0256(94)90109-0
+        
+        common signatures:
+        - FCC = 12 x 4,2,1
+        - HCP = 6 x 4,2,1 & 6 x 4,2,2
+        - BCC = 6 x 6,6,6 & 8 x 4,4,4
+        - Diamond = 12 x 5,4,3 & 4 x 6,6,3
+        - Icosahedral = 12 x 5,5,5
+        """
+        df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
+                                            repeat_vectors, leafsize=leafsize, 
+                                            ipython_progress=ipython_progress)
+        
+        cnas = df.cna.values
+        counter = sum(cnas,Counter())
+        
+        labels, values = zip(*counter.items())
+        indexes = np.arange(len(labels))
+
+        colors = []
+        patches = []
+        d = {'4,2,1':['orange','FCC or HCP (1 of 2)'],
+             '4,2,2':['red','HCP (1 of 2)'],
+             '6,6,6':['green','BCC (1 of 2)'],
+             '4,4,4':['green','BCC (2 of 2)'],
+            '5,5,5':['purple','Icosahedral'],
+             '5,4,3':['grey','Diamond (1 of 2)'],
+             '6,6,3':['grey','Diamond (1 of 2)']}
+        for label in labels:
+            if d.has_key(label):
+                colors.append(d[label][0])
+                patches.append(mpatches.Patch(color=d[label][0], label=d[label][1]))
+            else:
+                colors.append('blue')
+               
+        plt.barh(indexes, values, barwidth, color=colors)
+        plt.yticks(indexes + barwidth * 0.5, labels)
+        plt.grid(True)
+        if patches:
+            plt.legend(handles=patches)
+
+        plt.ylabel('i,j,k')
+        
+        return plt
