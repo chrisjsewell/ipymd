@@ -497,15 +497,6 @@ img = vis.draw_colormap(img,minv=3,maxv=7,text='Na Coordination')
 vis.visualise(img)
 ```
 
-    //anaconda/envs/ipymd/lib/python2.7/site-packages/pandas/core/generic.py:2177: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-    
-    See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
-      self[name] = value
-
-
-
 
 
 ![png](images/output_43_1.png)
