@@ -142,26 +142,28 @@ class Atom_Manipulation(object):
         self._atom_df = self._original_atom_df.copy()
         
     def change_variables(self, map_dict, vtype='type'):
-        """ change particular variables """
+        """ change particular variables according to the map_dict """
         self._atom_df.replace({vtype:map_dict}, inplace=True)
 
-    def change_type_variable(self, atom_type, variable, value):
+    def change_type_variable(self, atom_type, variable, value, type_col='type'):
         """ change particular variable for one atom type """
-        self._atom_df.loc[self._atom_df['type']==atom_type, variable] = value
+        self._atom_df.loc[self._atom_df[type_col]==atom_type, variable] = value
 
-    def apply_colormap(self, colormap=default_atom_map):
+    def apply_colormap(self, colormap=default_atom_map, type_col='type', default_color='grey'):
         """
         colormap : dict
            A dictionary mapping atom types to colors, in str format 
            By default it is a default color scheme (light_atom_map also available).   
         """
+        self._atom_df = self._atom_df.copy()
+        self._atom_df['color'] = default_color
         for key, val in colormap.iteritems():
-            self.change_type_variable(key, 'color', val)
+            self.change_type_variable(key, 'color', val, type_col)
     
-    def color_by_variable(self, variable, cmap='jet', minv=None, maxv=None):
+    def color_by_variable(self, colname, cmap='jet', minv=None, maxv=None):
         """change colors to map 
         
-        variable : string
+        colname : string
             a coloumn of the dataframe that contains numbers by which to color
         cmap : string
             the colormap to apply, see available at http://matplotlib.org/examples/color/colormaps_reference.html
@@ -170,13 +172,32 @@ class Atom_Manipulation(object):
             
         """
         colormap = cm.get_cmap(cmap)
-        var = self._atom_df[variable]
+        var = self._atom_df[colname]
         minval = var.min() if minv is None else minv
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
+    def color_by_categories(self, colname, cmap='jet', sort=True):
+        """change colors to map 
+        
+        colname : string
+            a coloumn of the dataframe that contains numbers by which to color
+        cmap : string
+            the colormap to apply, see available at http://matplotlib.org/examples/color/colormaps_reference.html
+            
+        """
+        colormap = cm.get_cmap(cmap)        
+        cats = self._atom_df[colname]   
+        unique_cats = cats.unique()
+        if sort:
+            unique_cats = sorted(unique_cats)
+        num_cats = float(cats.nunique())
+        color_dict = dict([(cat,colormap(i/num_cats,bytes=True)[:3]) for i,cat in enumerate(unique_cats)])
+        
+        self._atom_df.color = cats.map(color_dict)
+        
     def apply_radiimap(self, radiimap=vdw_dict):
         """
         radii_map: dict

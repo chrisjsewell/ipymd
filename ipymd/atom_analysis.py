@@ -286,6 +286,51 @@ class Atom_Analysis(object):
         
         return df
         
+    
+    def _equala(self,i, j, accuracy):
+        return j*accuracy <= i <= j+j*(1-accuracy)
+        
+    def cna_categories(self, atoms_df, accuracy=1., upper_bound=4, max_neighbours=24,
+                    repeat_vectors=None, leafsize=100, ipython_progress=False):
+        """ compute summed atomic environments of each atom in atoms_df
+        
+        Based on Faken, Daniel and Jónsson, Hannes,
+        'Systematic analysis of local atomic structure combined with 3D computer graphics',
+        March 1994, DOI: 10.1016/0927-0256(94)90109-0
+        
+        signatures:
+        - FCC = 12 x 4,2,1
+        - HCP = 6 x 4,2,1 & 6 x 4,2,2
+        - BCC = 6 x 6,6,6 & 8 x 4,4,4
+        - Diamond = 12 x 5,4,3 & 4 x 6,6,3
+        - Icosahedral = 12 x 5,5,5
+        
+        accuracy : float
+            0 to 1 how accurate to fit to signature
+        """
+        df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
+                                            repeat_vectors, leafsize=leafsize, 
+                                            ipython_progress=ipython_progress)
+        
+        cnas = df.cna.values
+        
+        atype = []
+        for counter in cnas:
+            if self._equala(counter['4,2,1'],6,accuracy) and self._equala(counter['4,2,2'],6,accuracy):
+                atype.append('HCP')
+            elif self._equala(counter['4,2,1'],12,accuracy):
+                atype.append('FCC')
+            elif self._equala(counter['6,6,6'],6,accuracy) and self._equala(counter['4,4,4'],8,accuracy):
+                atype.append('BCC')
+            elif self._equala(counter['5,4,3'],12,accuracy) and self._equala(counter['6,6,3'],4,accuracy):
+                atype.append('Diamond')
+            elif self._equala(counter['5,5,5'],12,accuracy):
+                atype.append('Icosahedral')
+            else:
+                atype.append('Other')
+        df.cna = atype
+        return df
+
     def cna_sum(self, atoms_df, upper_bound=4, max_neighbours=24,
                     repeat_vectors=None, leafsize=100, ipython_progress=False):
         """ compute summed atomic environments of each atom in atoms_df

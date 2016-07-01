@@ -182,7 +182,7 @@ class LAMMPS_Output(DataInput):
         else:
             return sys_df.loc[step]
                         
-    def get_atom_data(self, step, unscale_coords=True):
+    def get_atom_data(self, step=0, unscale_coords=True):
         """ return pandas.DataFrame 
 
         unscale_coords : bool
@@ -329,7 +329,7 @@ class LAMMPS_Output(DataInput):
         
         return time
         
-    def get_simulation_box(self, step):
+    def get_simulation_box(self, step=0):
        """ return list of coordinates (np.array(3)) for origin and [a,b,c] """
        if self._single_atom_file:
             current_step = 0

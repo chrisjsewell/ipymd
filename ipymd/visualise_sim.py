@@ -32,8 +32,6 @@ Camera.orbit_z = orbit_z
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops
 
-import matplotlib.pyplot as plt
-
 # in order to set atoms as transparent
 from .chemlab_patch.atom import AtomRenderer
 from .chemlab_patch.triangle import TriangleRenderer
@@ -303,69 +301,28 @@ class Visualise_Sim(object):
             final_img.paste(img, (0, vertical_position))
             vertical_position += img.size[1] + gap
         
-        return final_img
-
-    def draw_colormap(self, image, cmap='jet',minv=0, maxv=1, text=None,
-                      left=0.5, bottom=0., width=0.2, height=0.05,
-                      size=(300,300),dpi=300):
-        """ draw a color map on the image
+        return final_img        
         
-        image : PIL.Image
-        cmap : string
-            the colormap to display, see available at http://matplotlib.org/examples/color/colormaps_reference.html
-        minv, maxv : float
-            min, max cmap value
-        text : string
-            text to display below colormap
-        left, bottom, width, height
-            where to place the colormap        
-
-        Return
-        ------
-        image : PIL.Image
-
-        """        
-        fig, ax = plt.subplots(1, 1)
+    #TODO orthogonal perspective
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., size=400, quality=5):
+        """ get image of visualisation
         
-        # Add the colorbar axes anywhere in the figure. 
-        cbar_ax = fig.add_axes([left,bottom,width,height])
-        #NB: this is another way of doing it
-            #from mpl_toolkits.axes_grid1 import make_axes_locatable
-            #divider = make_axes_locatable(ax)
-            #cax = divider.append_axes("right", size="5%", pad=0.2)
-        
-        
-        im = ax.imshow(image,cmap=cmap,vmin=minv,vmax=maxv)
-        ax.get_xaxis().set_visible(False)
-        ax.get_yaxis().set_visible(False)
-        ax.set_frame_on(False)
-        
-        cb = fig.colorbar(im, cax=cbar_ax,orientation='horizontal')
-        cb.set_ticks([minv,maxv])
-        if text is not None:
-            cbar_ax.set_xlabel(text,fontsize='medium')
-        buf = BytesIO()
-        fig.savefig(buf, dpi=dpi,format='png',bbox_inches='tight')
-        buf.seek(0)
-        im = Image.open(buf)
-        im.thumbnail(size,Image.ANTIALIAS)
-        buf.close()
-        plt.close(fig)
-        
-        return im
-    
-    # orthogonal perspective
-    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., width=400, height=400):
-        """ get image of atom configuration
-        
-        requires atoms to have, at least variables x, y, z and type
+        NB: x-axis horizontal, y-axis vertical, z-axis out of page
         
         Parameters
         ----------
-        rotx: rotation about x (degrees)
-        roty: rotation about y (degrees)
-        rotz: rotation about z (degrees)
-        (start x-axis horizontal, y-axis vertical)
+        rotx: float
+            rotation about x (degrees)
+        roty: float
+            rotation about y (degrees)
+        rotz: float
+            rotation about z (degrees)
+        fov : float
+            field of view angle (degrees)
+        size : float
+            size of image
+        quality : float
+            quality of image (pixels per point), note: higher quality will take longer to render
         
         Return
         ------
@@ -403,7 +360,7 @@ class Visualise_Sim(object):
         #boxes render
         for box_vectors, box_origin, box_color, box_width in self._boxes:
             v.add_renderer(BoxRenderer,box_vectors,box_origin,
-                           color=box_color, width=box_width)           
+                           color=box_color, width=box_width*quality)           
             #TODO account for other corners of box?
             b_array = box_vectors + box_origin                           
             all_array = b_array if all_array is None else np.concatenate([all_array,b_array])
@@ -411,7 +368,7 @@ class Visualise_Sim(object):
         #hexagonal prism render
         for hex_vectors, hex_origin, hex_color, hex_width in self._hexagons:
             v.add_renderer(HexagonRenderer,hex_vectors,hex_origin,
-                           color=hex_color, width=hex_width)           
+                           color=hex_color, width=hex_width*quality)           
             #TODO account for other vertices of hexagon?
             h_array = hex_vectors + hex_origin                           
             all_array = h_array if all_array is None else np.concatenate([all_array,h_array])
@@ -465,13 +422,14 @@ class Visualise_Sim(object):
                 startends = [[origin, vector],[origin, vector]]                      
                 colors = [[color, color],[color, color]]
                 #TODO add as arrows instead of lines 
-                v.add_renderer(LineRenderer, startends, colors, width=axes_width)
+                v.add_renderer(LineRenderer, startends, colors, width=axes_width*quality)
                 #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
         w.camera.autozoom(all_array)
 
         # convert scene to image
-        image = w.toimage(width, height)
+        image = w.toimage(int(size*quality), int(size*quality))
+        image.thumbnail((int(size),int(size)),Image.ANTIALIAS)
         image = self._trim_image(image)
 
         # Cleanup
@@ -485,11 +443,10 @@ class Visualise_Sim(object):
         
         Parameters
         ----------
-        images : list or single PIL.Image
+        images : list/single PIL.Image or (x,y)
+            (x,y) denotes a blank space of size x,y e.g. [img1,(100,0),img2]
         columns : int
             number of image columns 
-        cmap : (string, float, float)
-            (cmap, cmin, cmax) if set places colormap at right of images
         
         Returns
         -------
@@ -504,6 +461,14 @@ class Visualise_Sim(object):
         img_columns = []
         img_rows = []
         for image in img_iter: 
+            
+            # add blank
+            try:
+                x,y = image
+                image = Image.new("RGB", (x,y), "white")
+            except TypeError:
+                pass
+                
             if len(img_columns) < columns:
                 img_columns.append(image)
             else:
@@ -524,7 +489,7 @@ class Visualise_Sim(object):
                   spheres=True, illustrate=False, 
                   xrot=0, yrot=0, zrot=0, fov=10.,
                   axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), axes_length=1., axes_offset=(-1.2,0.2),
-                  width=400, height=400):
+                  size=400, quality=5):
         """ basic visualisation shortcut
         
         invoking add_atoms, add_box (if sim_box), add_axes, get_image and visualise functions
@@ -538,10 +503,11 @@ class Visualise_Sim(object):
             self.add_axes(axes=axes, length=axes_length, offset=axes_offset)
             
         image = self.get_image(xrot=xrot, yrot=yrot, zrot=zrot, fov=fov, 
-                               width=width, height=height)
+                               size=size, quality=quality)
         
         # cleanup
         self._atoms.pop()
         if not sim_box is None: self._boxes.pop()
 
         return self.visualise(image)
+        
