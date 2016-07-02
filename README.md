@@ -1,5 +1,5 @@
-# IPython Molecular Dynamics Analysis (ipymd)
-Analysis of Molecular Dynamics output in the IPython Notebook
+# IPython Molecular Dynamics Analysis (ipyMD)
+Analysis of Molecular Dynamics output in the IPython Notebook (http://ipymd.rtfd.io)
 
 This package aims to provide a means of producing **reusable** analysis of Molecular Dynamics (MD) output in the IPython Notebook. 
 
