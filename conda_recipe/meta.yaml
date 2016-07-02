@@ -1,0 +1,79 @@
+source:
+  git_url: https://github.com/chrisjsewell/ipymd.git
+  git_tag: v0.1.0
+#  patches:
+   # List any patch files here
+   # - fix.patch
+
+package:
+  name: ipymd
+  version: 0.1.0
+
+# build:
+  # preserve_egg_dir: True
+  # entry_points:
+    # Put any entry points (scripts to be generated automatically) here. The
+    # syntax is module:function.  For example
+    #
+    # - ipymd = ipymd:main
+    #
+    # Would create an entry point called ipymd that calls ipymd.main()
+
+
+  # If this is a new build for the same version, increment the build
+  # number. If you do not include this key, it defaults to 0.
+  # number: 1
+
+requirements:
+  build:
+    - python
+    - numpy
+    - scipy
+    - matplotlib
+    - pandas
+    - ipython
+    - pil
+    - pyopengl ==3.0.2
+    - chemlab
+
+  run:
+    - python
+    - numpy
+    - scipy
+    - matplotlib
+    - pandas
+    - ipython
+    - ipython-notebook
+    - pil
+    - pyopengl ==3.0.2
+    - chemlab
+
+test:
+  # Python imports
+  imports:
+    - ipymd
+    - ipymd.chemlab_patch
+    - ipymd.data_input
+    - ipymd.test_data
+
+  # commands:
+    # You can put test commands to be run here.  Use this to test that the
+    # entry points work.
+
+
+  # You can also put a file called run_test.py in the recipe that will be run
+  # at test time.
+
+  requires:
+    # Put any additional test requirements here.  For example
+    #- nose
+    #- nose-parameterized
+
+about:
+  home: https://github.com/chrisjsewell/ipymd
+  license: GNU General Public License v3 (GPLv3)
+  summary: Analysis of Molecular Dynamics output in the IPython Notebook 
+
+# See
+# http://docs.continuum.io/conda/build.html for
+# more information about meta.yaml
