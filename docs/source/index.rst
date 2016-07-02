@@ -19,6 +19,7 @@ Contents
    :maxdepth: 2
 
    tutorial
+   user_api
 
 License
 -------
