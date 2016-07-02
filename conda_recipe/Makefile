@@ -1,0 +1,1 @@
+conda build -c http://conda.binstar.org/gabrielelanaro .

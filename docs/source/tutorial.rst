@@ -20,7 +20,7 @@ Python environment within which to use ipymd:
 
 .. parsed-literal::
 
-    0.0.3dev
+    0.1.0
 
 
 Basic Atom Creation and Visualisation

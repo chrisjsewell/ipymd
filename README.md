@@ -36,7 +36,7 @@ import ipymd
 print ipymd.version()
 ```
 
-    0.0.3dev
+    0.1.0
 
 
 ### Basic Atom Creation and Visualisation
