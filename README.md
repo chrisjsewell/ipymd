@@ -1,7 +1,7 @@
 # IPython Molecular Dynamics Analysis (ipymd)
 Analysis of Molecular Dynamics output in the IPython Notebook
 
-![png](images/small_sim.png)
+![png](images/docs/source/small_sim.png)
 
 This package aims to provide a means of producing **reusable** analysis of Molecular Dynamics (MD) output in the IPython Notebook. 
 
@@ -89,7 +89,7 @@ vis.visualise(img1)
 
 
 
-![png](images/output_12_0.png)
+![png](images/docs/source/output_12_0.png)
 
 
 
@@ -110,7 +110,7 @@ vis.visualise([img1,img2])
 
 
 
-![png](images/output_14_0.png)
+![png](images/docs/source/output_14_0.png)
 
 
 
@@ -127,7 +127,7 @@ plot.display_plot(tight_layout=False)
 ```
 
 
-![png](images/output_16_0.png)
+![png](images/docs/source/output_16_0.png)
 
 
 
@@ -219,7 +219,7 @@ vis2.visualise(images, columns=2)
 
 
 
-![png](images/output_22_0.png)
+![png](images/docs/source/output_22_0.png)
 
 
 
@@ -316,7 +316,7 @@ vis.basic_vis(data.get_atom_data(), data.get_simulation_box(),
 
 
 
-![png](images/output_27_0.png)
+![png](images/docs/source/output_27_0.png)
 
 
 
@@ -379,7 +379,7 @@ vis.basic_vis(data.get_atom_data(atom_style='charge'), data.get_simulation_box()
 
 
 
-![png](images/output_32_0.png)
+![png](images/docs/source/output_32_0.png)
 
 
 
@@ -400,7 +400,7 @@ vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
 
 
 
-![png](images/output_35_0.png)
+![png](images/docs/source/output_35_0.png)
 
 
 
@@ -421,7 +421,7 @@ vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
 
 
 
-![png](images/output_36_1.png)
+![png](images/docs/source/output_36_1.png)
 
 
 
@@ -467,7 +467,7 @@ vis2.visualise([img1,img2, (280,1), img3], columns=2)
 
 
 
-![png](images/output_39_0.png)
+![png](images/docs/source/output_39_0.png)
 
 
 
@@ -528,7 +528,7 @@ vis.visualise([img,img2],columns=2)
 
 
 
-![png](images/output_45_1.png)
+![png](images/docs/source/output_45_1.png)
 
 
 
@@ -560,7 +560,7 @@ vis.visualise([img,img2],columns=2)
 
 
 
-![png](images/output_46_0.png)
+![png](images/docs/source/output_46_0.png)
 
 
 
@@ -759,7 +759,7 @@ plt = analysis.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
 ```
 
 
-![png](images/output_57_0.png)
+![png](images/docs/source/output_57_0.png)
 
 
 A visualisation of the probable local character of eac atom can also be created. Note the *accuracy* parameter in the `cna_categories` method allows for more robust fitting to the ideal signatures:
@@ -793,7 +793,7 @@ vis.visualise([img,img2],columns=2)
 
 
 
-![png](images/output_59_0.png)
+![png](images/docs/source/output_59_0.png)
 
 
 
@@ -920,5 +920,5 @@ ax.grid()
 ```
 
 
-![png](images/output_64_0.png)
+![png](images/docs/source/output_64_0.png)
 
