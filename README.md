@@ -1,7 +1,7 @@
 # IPython Molecular Dynamics Analysis (ipymd)
 Analysis of Molecular Dynamics output in the IPython Notebook
 
-![png](images/docs/source/small_sim.png)
+![png](images/docs/source/small_sim.png =250x)
 
 This package aims to provide a means of producing **reusable** analysis of Molecular Dynamics (MD) output in the IPython Notebook. 
 

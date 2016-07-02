@@ -6,13 +6,16 @@
 Welcome to Molecular Dynamics Analysis for IPython (ipymd)!
 ===================================
 
-+--------------------------+-----------------------------------------------+
-|**Author**                | Chris Sewell                                  |
-+--------------------------+-----------------------------------------------+
-|**Project Page**          | https://github.com/chrisjsewell/ipymd         |
-+--------------------------+-----------------------------------------------+
-
 This package aims to provide a means of producing **reusable** analysis of Molecular Dynamics (MD) output in the IPython Notebook. 
+
+.. figure:: images/small_sim.png
+    :width: 200px
+    :align: center
+    :height: 100px
+    :alt: alternate text
+    :figclass: align-center
+
+    Analysis of the atomic coordination.
 
 There are many programs for 3D visualisation of MD output (my favourite being [Ovito](http://www.ovito.org/index.php)). However, there lacks a means to produce a more thorough, documented analysis of the data. IPython Notebooks are ideal for this type of analysis and so the objective of `ipymd` is to produce a Python package that can be used in conjuction with programmes like Ovito, to produce documented and reuseable analysis.  
 
@@ -28,14 +31,11 @@ It has been created with the goal to be:
 
 It builds primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) package, that is an API layer on top of OpenGL. Data is parsed in standard formats, such as [pandas](http://pandas.pydata.org/) dataframes, which are easy to create and use independantly from this package, in order to extend its functionality.  
 
-.. figure:: images/output_45_1.png
-    :width: 200px
-    :align: center
-    :height: 100px
-    :alt: alternate text
-    :figclass: align-center
-
-    Analysis of the atomic coordination.
++--------------------------+-----------------------------------------------+
+|**Author**                | Chris Sewell                                  |
++--------------------------+-----------------------------------------------+
+|**Project Page**          | https://github.com/chrisjsewell/ipymd         |
++--------------------------+-----------------------------------------------+
 
 Contents
 --------
@@ -44,7 +44,7 @@ Contents
    :maxdepth: 2
 
    tutorial
-   user_api
+   package_api
 
 License
 -------
