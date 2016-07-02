@@ -20,6 +20,7 @@ It has been created with the goal to be:
 It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) package, that is an API layer on top of OpenGL. It will also aim to parse data in simple formats, such as [pandas](http://pandas.pydata.org/) dataframes, which are easy to create and use independantly from this package, in order to extend its functionality.  
 
 
+
 ## User Tutorial
 
 ### Instillation of Dependant Packages
@@ -30,7 +31,6 @@ It will build primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest
 
 
 ```python
-%matplotlib inline
 import ipymd
 print ipymd.version()
 ```
@@ -68,14 +68,14 @@ The `Visualise_Sim` class can then be used to setup a visualisation, which is re
 ```python
 vis = ipymd.visualise_sim.Visualise_Sim()
 vis.add_atoms(df)
-img1 = vis.get_image()
+img1 = vis.get_image(size=400,quality=5)
 img1
 ```
 
 
 
 
-    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x1177C4B48>
+    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x1581DBA70>
 
 
 
@@ -103,6 +103,7 @@ vis.add_plane([[5,0,0],[0,5,2]],alpha=0.3)
 vis.add_hexagon([[1,0,0],[0,0,.5]],[0,0,2],color='green')
 
 img2 = vis.get_image(xrot=45, yrot=45)
+#img2 = vis.draw_colorlegend(img2,1,2)
 vis.visualise([img1,img2])
 ```
 
@@ -110,6 +111,23 @@ vis.visualise([img1,img2])
 
 
 ![png](images/output_14_0.png)
+
+
+
+Images can also be added to plots, with the `Plotting` class:
+
+
+```python
+plot = ipymd.plotting.Plotting()
+plot.axes[0].scatter([0,0.5,1.2],[0,0.5,1])
+plot.axes[0].grid(True)
+plot.add_image_annotation(img2,(250,100),(0.5,0.5),zoom=0.5)
+plot.resize_axes(width=0.5)
+plot.display_plot(tight_layout=False)
+```
+
+
+![png](images/output_16_0.png)
 
 
 
@@ -201,7 +219,7 @@ vis2.visualise(images, columns=2)
 
 
 
-![png](images/output_20_0.png)
+![png](images/output_22_0.png)
 
 
 
@@ -298,7 +316,7 @@ vis.basic_vis(data.get_atom_data(), data.get_simulation_box(),
 
 
 
-![png](images/output_25_0.png)
+![png](images/output_27_0.png)
 
 
 
@@ -361,7 +379,7 @@ vis.basic_vis(data.get_atom_data(atom_style='charge'), data.get_simulation_box()
 
 
 
-![png](images/output_30_0.png)
+![png](images/output_32_0.png)
 
 
 
@@ -376,13 +394,13 @@ data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
 
 vis = ipymd.visualise_sim.Visualise_Sim()
 vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
-              spheres=True,xrot=45,yrot=45)
+              spheres=True,xrot=45,yrot=45,quality=5)
 ```
 
 
 
 
-![png](images/output_33_0.png)
+![png](images/output_35_0.png)
 
 
 
@@ -403,7 +421,7 @@ vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
 
 
 
-![png](images/output_34_1.png)
+![png](images/output_36_1.png)
 
 
 
@@ -439,16 +457,17 @@ new_df.repeat_cell(data.get_simulation_box()[0],((-1,1),(-1,1),(-1,1)))
 new_df.color_by_variable('z')
 vis2.add_atoms(new_df.df, spheres=True)
 img2 = vis2.get_image(xrot=90,yrot=0)
-img2 = vis2.draw_colormap(img2,minv=new_df.df.z.min(), maxv=new_df.df.z.max(),
-                          bottom=0.05,left=0.52,size=(200,200))
 
-vis2.visualise([img1,img2], columns=2)
+img3 = ipymd.plotting.create_colormap_image(new_df.df.z.min(), new_df.df.z.max(),
+                                            horizontal=True,title='z position',size=150)
+
+vis2.visualise([img1,img2, (280,1), img3], columns=2)
 ```
 
 
 
 
-![png](images/output_37_0.png)
+![png](images/output_39_0.png)
 
 
 
@@ -492,14 +511,24 @@ vis.add_box(*data.get_simulation_box())
 vis.add_atoms(new_df.df)
 
 img = vis.get_image(xrot=45,yrot=45)
-img = vis.draw_colormap(img,minv=3,maxv=7,text='Na Coordination')
 
-vis.visualise(img)
+img2 = ipymd.plotting.create_legend_image(new_df.df.coord,new_df.df.color, title='Na Coordination',size=150,colbytes=True)
+
+vis.visualise([img,img2],columns=2)
 ```
 
+    //anaconda/envs/ipymd/lib/python2.7/site-packages/pandas/core/generic.py:2177: SettingWithCopyWarning: 
+    A value is trying to be set on a copy of a slice from a DataFrame.
+    Try using .loc[row_indexer,col_indexer] = value instead
+    
+    See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
+      self[name] = value
 
 
-![png](images/output_43_1.png)
+
+
+
+![png](images/output_45_1.png)
 
 
 
@@ -522,15 +551,16 @@ vis.add_box(*data.get_simulation_box())
 vis.add_atoms(new_df.df)
 
 img = vis.get_image(xrot=45,yrot=45)
-img = vis.draw_colormap(img,minv=3,maxv=7,text='Na Coordination')
 
-vis.visualise(img)
+img2 = ipymd.plotting.create_legend_image(new_df.df.coord_Na_Cl,new_df.df.color, title='Na Coordination',size=150,colbytes=True)
+
+vis.visualise([img,img2],columns=2)
 ```
 
 
 
 
-![png](images/output_44_0.png)
+![png](images/output_46_0.png)
 
 
 
@@ -569,14 +599,14 @@ print ('Average distance to nearest atom (different)',
 
 CNA ([Honeycutt and Andersen, J. Phys. Chem. 91, 4950](http://dx.doi.org/10.1021/j100303a014)) is an algorithm to compute a signature for pairs of atoms, which is designed to characterize the local structural environment. Typically, CNA is used as an effective filtering method to classify atoms in crystalline systems ([Faken and Jonsson, Comput. Mater. Sci. 2, 279](http://dx.doi.org/10.1016/0927-0256(94%2990109-0)), with the goal to get a precise understanding of which atoms are associated with which phases, and which are associated with defects.
 
-Common signatures are:
+Common signatures for nearest neighbours are:
 
 - FCC = 12 x 4,2,1
 - HCP = 6 x 4,2,1 & 6 x 4,2,2
 - BCC = 6 x 6,6,6 & 8 x 4,4,4
 - Diamond = 12 x 5,4,3 & 4 x 6,6,3
-- icosahedral = 12 x 5,5,5
 
+which are tested below:
 
 
 ```python
@@ -604,10 +634,27 @@ bcc_df = data.get_atom_data()
 data = ipymd.data_input.crystal.Crystal(
     [[0,0,0]], ['C'], 
     227, cellpar=[3.57, 3.57, 3.57, 90, 90, 90], 
-    repetitions=[1,1,1])
+    repetitions=[2,2,2])
 diamond_vector = data.get_simulation_box()[0]
 diamond_df = data.get_atom_data()
 ```
+
+
+```python
+analysis= ipymd.atom_analysis.Atom_Analysis()
+print analysis.cna_sum(fcc_df,repeat_vectors=fcc_vector)
+print analysis.cna_sum(hcp_df,repeat_vectors=hcp_vector)
+print analysis.cna_sum(bcc_df,repeat_vectors=bcc_vector)
+print analysis.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
+```
+
+    Counter({'4,2,1': 6000})
+    Counter({'4,2,2': 1500, '4,2,1': 1500})
+    Counter({'6,6,6': 2000, '4,4,4': 1500})
+    Counter({'5,4,3': 768, '6,6,3': 256})
+
+
+For each atom, the CNA for each nearest-neighbour can be output:
 
 
 ```python
@@ -644,7 +691,7 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
       <td>1</td>
       <td>light_salmon</td>
       <td>1</td>
-      <td>{u'4,2,2': 4, u'4,2,1': 8}</td>
+      <td>{u'4,2,2': 6, u'4,2,1': 6}</td>
     </tr>
     <tr>
       <th>1</th>
@@ -656,7 +703,7 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
       <td>1</td>
       <td>light_salmon</td>
       <td>1</td>
-      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+      <td>{u'4,2,2': 6, u'4,2,1': 6}</td>
     </tr>
     <tr>
       <th>2</th>
@@ -668,7 +715,7 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
       <td>1</td>
       <td>light_salmon</td>
       <td>1</td>
-      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+      <td>{u'4,2,2': 6, u'4,2,1': 6}</td>
     </tr>
     <tr>
       <th>3</th>
@@ -680,7 +727,7 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
       <td>1</td>
       <td>light_salmon</td>
       <td>1</td>
-      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+      <td>{u'4,2,2': 6, u'4,2,1': 6}</td>
     </tr>
     <tr>
       <th>4</th>
@@ -692,7 +739,7 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
       <td>1</td>
       <td>light_salmon</td>
       <td>1</td>
-      <td>{u'4,2,2': 5, u'4,2,1': 7}</td>
+      <td>{u'4,2,2': 6, u'4,2,1': 6}</td>
     </tr>
   </tbody>
 </table>
@@ -700,19 +747,54 @@ analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
 
 
 
+This can be used to produce a plot identifying likely structure of an unknown structure:
+
 
 ```python
-analysis= ipymd.atom_analysis.Atom_Analysis()
-print analysis.cna_sum(fcc_df,repeat_vectors=fcc_vector)
-print analysis.cna_sum(hcp_df,repeat_vectors=hcp_vector)
-print analysis.cna_sum(bcc_df,repeat_vectors=bcc_vector)
-print analysis.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
+lammps_path = ipymd.get_test_path('thermalized_troilite.dump')
+data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
+df = data.get_atom_data(0)
+df = df[df.type==1]
+plt = analysis.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
 ```
 
-    Counter({'4,2,1': 6000})
-    Counter({'4,2,1': 1946, '4,2,2': 1054})
-    Counter({'6,6,6': 2000, '4,4,4': 1500})
-    Counter({'5,4,3': 96, '6,6,3': 32})
+
+![png](images/output_57_0.png)
+
+
+A visualisation of the probable local character of eac atom can also be created. Note the *accuracy* parameter in the `cna_categories` method allows for more robust fitting to the ideal signatures:
+
+
+```python
+lammps_path = ipymd.get_test_path('thermalized_troilite.dump')
+data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
+
+df = data.get_atom_data()
+df = df[df.type==1]
+df = analysis.cna_categories(df,repeat_vectors=data.get_simulation_box()[0],accuracy=0.7)
+manip = ipymd.atom_manipulation.Atom_Manipulation(df)
+manip.color_by_categories('cna')
+#manip.apply_colormap({'Other':'blue','FCC':'green','HCP':'red'}, type_col='cna')
+manip.change_type_variable('Other','transparency',0.5,type_col='cna')
+atom_df = manip.df
+
+vis = ipymd.visualise_sim.Visualise_Sim()
+vis.add_box(*data.get_simulation_box())
+vis.add_atoms(atom_df)
+
+img = vis.get_image(xrot=45,yrot=45)
+
+img2 = ipymd.plotting.create_legend_image(atom_df.cna,atom_df.color, 
+                title='CNA Category\nof Fe Sublattice',size=150,colbytes=True)
+
+vis.visualise([img,img2],columns=2)
+```
+
+
+
+
+![png](images/output_59_0.png)
+
 
 
 ### System Analysis
@@ -838,4 +920,5 @@ ax.grid()
 ```
 
 
-![png](images/output_57_0.png)
+![png](images/output_64_0.png)
+
