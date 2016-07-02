@@ -26,27 +26,32 @@ package:
 
 requirements:
   build:
-    - python
-    - numpy
+    - python 2.7.11 0
+    - numpy 1.9.3 py27_1
     - scipy
     - matplotlib
     - pandas
     - ipython
     - pil
-    - pyopengl ==3.0.2
+    - pyopengl 3.0.2 py27_0
     - chemlab
+    - pyqt 4.11.4 py27_1
+    - qt 4.8.7 1
+
 
   run:
-    - python
-    - numpy
+    - python 2.7.11 0
+    - numpy 1.9.3 py27_1
     - scipy
     - matplotlib
     - pandas
     - ipython
     - ipython-notebook
     - pil
-    - pyopengl ==3.0.2
+    - pyopengl 3.0.2 py27_0
     - chemlab
+    - pyqt 4.11.4 py27_1
+    - qt 4.8.7 1
 
 test:
   # Python imports

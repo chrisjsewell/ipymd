@@ -1,1 +1,1 @@
-conda build -c http://conda.binstar.org/gabrielelanaro .
+conda build -c http://conda.binstar.org/cjs14 .

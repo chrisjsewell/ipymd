@@ -43,6 +43,7 @@ Contents
 .. toctree::
    :maxdepth: 3
 
+   install
    tutorial
    package_api
 

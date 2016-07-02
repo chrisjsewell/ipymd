@@ -1,16 +1,7 @@
-
 User Tutorial
 -------------
 
-Instillation of Dependant Packages
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`Anaconda <https://www.continuum.io/>`__ is recommended to create a
-Python environment within which to use ipymd:
-
-::
-
-    conda create -n ipymd -c http://conda.binstar.org/gabrielelanaro chemlab matplotlib pandas ipython ipython-notebook pil pyopengl==3.0.2
+In the IPython Notebook, the ipymd package must first be imported:
 
 .. code:: python
 
