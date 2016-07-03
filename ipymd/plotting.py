@@ -11,6 +11,7 @@ from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 from io import BytesIO
 from IPython import get_ipython, display
+from chemlab.graphics.colors import get as str_to_colour
 
 class Plotting(object):
     """ a class to deal with data plotting """
@@ -138,7 +139,7 @@ class Plotting(object):
 
 #TODO convert colors to r,g,b before creating set (in case mixed strings and rgb)
 def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=False,
-                        sort_labels=True, colbytes=False, dpi=300, **kwargs):
+                        sort_labels=True, colbytes=False, chemlabcols=True, dpi=300, **kwargs):
     """ create a standalone image of a legend 
 
     labels : list
@@ -147,6 +148,8 @@ def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=Fa
         a list of colors, as (r,g,b) or names from matplotlib
     colbytes : bool
         whether colors are in byte format (1-255) or not (0-1)
+    chemlabcols : bool
+        using color names defined by chemlab, otherwise matplotlib   
     kwargs
         additional arguments for legend matplotlib.legend
     """
@@ -154,6 +157,9 @@ def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=Fa
     names=[]
     for label,color in set(zip(labels,colors)):
         if not isinstance(color,basestring) and colbytes:
+            color = [i/255. for i in color]
+        if isinstance(color,basestring) and chemlabcols:
+            color = str_to_colour(color)
             color = [i/255. for i in color]
         
         names.append(label)

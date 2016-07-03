@@ -30,13 +30,33 @@ from chemlab.graphics.camera import Camera
 Camera.orbit_z = orbit_z
 
 from IPython.display import Image as ipy_Image
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 
 # in order to set atoms as transparent
 from .chemlab_patch.atom import AtomRenderer
 from .chemlab_patch.triangle import TriangleRenderer
 from .chemlab_patch.box import BoxRenderer
 from .chemlab_patch.hexagon import HexagonRenderer
+
+import os, inspect
+from . import fonts
+
+def get_font_path(data, check_exists=True):
+    """return a directory path to the test data
+
+    data : str or list of str
+        file name or list of sub-directories and file name (e.g. ['lammps','data.txt'])   
+    """
+    basepath = os.path.dirname(os.path.abspath(inspect.getfile(fonts)))
+    
+    if isinstance(data, basestring): data = [data]
+    
+    dirpath = os.path.join(basepath, *data)
+    
+    if check_exists:
+        assert os.path.exists(dirpath), '{0} does not exist'.format(dirpath)
+    
+    return dirpath
 
 class Visualise_Sim(object):
     """ 
@@ -303,8 +323,21 @@ class Visualise_Sim(object):
         
         return final_img        
         
+    #TODO add truefonts
+    def create_textline_image(self, text, fontsize=10, color=(0,0,0),background=(255,255,255),
+                              boxsize=(1000,20)):
+        """create a PIL image from a line of text"""
+        img = Image.new('RGB',boxsize,color=background)
+        d = ImageDraw.Draw(img)        
+        font = ImageFont.truetype(get_font_path('Arial.ttf'), fontsize)
+        #font = ImageFont.load_default().font
+        d.text((0,0),text,fill=color,font=font)
+        img=self._trim_image(img)
+        return img
+
     #TODO orthogonal perspective
-    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., size=400, quality=5):
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., size=400, quality=5,
+                  zoom_extents=None, trim_whitespace=True):
         """ get image of visualisation
         
         NB: x-axis horizontal, y-axis vertical, z-axis out of page
@@ -323,6 +356,10 @@ class Visualise_Sim(object):
             size of image
         quality : float
             quality of image (pixels per point), note: higher quality will take longer to render
+        zoom_extents : None or np.ndarray((N, 3))
+             define an array of points to autozoom image, if None then computed automatically
+        trim_whitespace : bool
+            whether to trim whitspace around image
         
         Return
         ------
@@ -425,18 +462,25 @@ class Visualise_Sim(object):
                 v.add_renderer(LineRenderer, startends, colors, width=axes_width*quality)
                 #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
-        w.camera.autozoom(all_array)
+        if zoom_extents is None:        
+            w.camera.autozoom(all_array)
+        else:
+            w.camera.autozoom(np.asarray(zoom_extents))
 
         # convert scene to image
         image = w.toimage(int(size*quality), int(size*quality))
         image.thumbnail((int(size),int(size)),Image.ANTIALIAS)
-        image = self._trim_image(image)
+        
+        if trim_whitespace:
+            image = self._trim_image(image)
 
         # Cleanup
         w.close()
         v.clear()
        
         return image
+        
+    # TODO be able to paste one image on another, with different sizes and maintaining alpha values
         
     def visualise(self, images, columns=1): 
         """ visualise image(s) in IPython

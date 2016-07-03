@@ -196,10 +196,16 @@ class Atom_Analysis(object):
             dist,idnum = lattice_tree.query(atom, k=1, distance_upper_bound=max_dist)
             min_dists.append(dist)
         return min_dists
+
+    #TODO group atoms into specified molecules e.g. S2 or CaCO3
+    # http://chemwiki.ucdavis.edu/Textbook_Maps/Inorganic_Chemistry_Textbook_Maps/Map%3A_Inorganic_Chemistry_(Wikibook)/Chapter_08%3A_Ionic_and_Covalent_Solids_-_Structures/8.2%3A_Structures_related_to_NaCl_and_NiAs
+    # maybe supply central atom type(s) and 'other' atoms type(s), filter df by required atom types, 
+    # then find nearest neighbours of central (removing molecule each time)
+    # create molecule x,y,z from average of central atoms
             
     #http://www.ovito.org/manual/particles.modifiers.common_neighbor_analysis.html
     #https://www.quora.com/Given-a-set-of-atomic-types-and-coordinates-from-an-MD-simulation-is-there-a-good-algorithm-for-determining-its-likely-crystal-structure?__filter__=all&__nsrc__=2&__snid3__=179254150
-    #TODO add adaptive cna http://iopscience.iop.org/article/10.1088/0965-0393/20/4/045021/pdf
+    # http://iopscience.iop.org/article/10.1088/0965-0393/20/4/045021/pdf            
     def common_neighbour_analysis(self, atoms_df, upper_bound=4, max_neighbours=24,
                                   repeat_vectors=None, leafsize=100, ipython_progress=False):
         """ compute atomic environment of each atom in atoms_df

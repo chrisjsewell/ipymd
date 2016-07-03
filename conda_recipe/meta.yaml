@@ -61,6 +61,7 @@ test:
     - ipymd.data_input
     - ipymd.test_data
     - ipymd.test_data.atom_dump
+    - ipymd.fonts
 
   # commands:
     # You can put test commands to be run here.  Use this to test that the

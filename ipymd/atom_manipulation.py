@@ -126,6 +126,7 @@ class Atom_Manipulation(object):
     def _atom_df(self):
         return self._atom_df_new   
 
+    #TODO this needs to be improved, too unreliable
     @_atom_df.setter
     def _atom_df(self, atom_df):
         self._atom_df_old = self._atom_df_new
@@ -177,6 +178,7 @@ class Atom_Manipulation(object):
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
+        self._atom_df = self._atom_df.copy()
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
     def color_by_categories(self, colname, cmap='jet', sort=True):
@@ -196,6 +198,7 @@ class Atom_Manipulation(object):
         num_cats = float(cats.nunique())
         color_dict = dict([(cat,colormap(i/num_cats,bytes=True)[:3]) for i,cat in enumerate(unique_cats)])
         
+        self._atom_df = self._atom_df.copy()
         self._atom_df.color = cats.map(color_dict)
         
     def apply_radiimap(self, radiimap=vdw_dict):

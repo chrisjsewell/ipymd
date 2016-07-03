@@ -19,7 +19,7 @@ class Data_Output(object):
         self._abc = np.array(abc)
         self._origin = np.array(origin)
     
-    def save_xyz(self, outpath='out.xyz', overwrite=False,
+    def _save_xyz(self, outpath='out.xyz', overwrite=False,
                  header=''):
 
         if os.path.exists(outpath) and not overwrite:
@@ -27,7 +27,7 @@ class Data_Output(object):
         
         raise NotImplementedError
         
-    def save_gromacs(self, outpath='out.gro', overwrite=False,
+    def _save_gromacs(self, outpath='out.gro', overwrite=False,
                      header=''):
 
         if os.path.exists(outpath) and not overwrite:
@@ -36,8 +36,21 @@ class Data_Output(object):
         raise NotImplementedError
 
     def save_lammps(self, outpath='out.lammps', overwrite=False,
-                    atom_type='atomic', header=''):
+                    atom_type='atomic', header='', mass_map={}):
         """ to adhere to http://lammps.sandia.gov/doc/read_data.html?highlight=read_data 
+        
+        Parameters
+        ----------
+        outpath : string
+            the output file name
+        overwrite : bool
+            whether to raise an error if the file already exists
+        atom_type : str
+            the lammps atom style, currently supports atomic or charge
+        header : str
+            text to put in the header
+        mass_map : dict
+            a mapping of atom types to mass
         
         Example
         -------
@@ -96,6 +109,9 @@ class Data_Output(object):
         types = self._atom_df['type'].unique()
         num_types = len(types)
         type_map = dict(zip(types, [i+1 for i in range(len(types))]))
+        
+        if mass_map:
+            assert sorted(mass_map.keys()) == sorted(type_map.keys())
 
         with open(outpath, 'w+') as f:
             
@@ -118,6 +134,13 @@ class Data_Output(object):
             f.write('{0:.4f} {1:.4f} {1:.4f} xy xz yz \n'.format(xy, xz, yz))            
             f.write('\n')
             
+            if mass_map:
+                f.write('Masses\n')
+                f.write('\n')
+                for atype, mass in mass_map.iteritems():
+                    f.write('{0} {1:.4f}\n'.format(type_map[atype],mass))
+                f.write('\n')
+            
             # body
             f.write('Atoms \n')
             f.write('\n')
@@ -125,10 +148,10 @@ class Data_Output(object):
             for i, (ix, s) in enumerate(self._atom_df.iterrows()):
                 if atom_type == 'atomic':
                     f.write('{0} {1} {3:.4f} {4:.4f} {5:.4f} \n'.format(
-                    i+1, type_map[s.type], *s[['xs','ys','zs']].values))
+                    i+1, type_map[s.type], *s[['x','y','z']].values))
                 elif atom_type == 'charge':
                     f.write('{0} {1} {2:.4f} {3:.4f} {4:.4f} {5:.4f} \n'.format(
-                    i+1, type_map[s.type], *s[['q','xs','ys','zs']].values))
+                    i+1, type_map[s.type], *s[['q','x','y','z']].values))
                         
 
 
