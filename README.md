@@ -769,7 +769,7 @@ plt = analysis.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
 ![png](docs/source/images/output_57_0.png)
 
 
-A visualisation of the probable local character of eac atom can also be created. Note the *accuracy* parameter in the `cna_categories` method allows for more robust fitting to the ideal signatures:
+A visualisation of the probable local character of each atom can also be created. Note the *accuracy* parameter in the `cna_categories` method allows for more robust fitting to the ideal signatures:
 
 
 ```python

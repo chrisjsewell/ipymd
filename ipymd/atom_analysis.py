@@ -171,7 +171,9 @@ class Atom_Analysis(object):
         
         return df
         
-    #TODO vacancy identification
+    #TODO vacancy identification (Wigner-Seitz defect analysis)
+    #http://www.ovito.org/manual/particles.modifiers.wigner_seitz_analysis.html
+    # basically this method but reformed (compute coordination of interstitials?)
     def compare_to_lattice(self, atoms_df, lattice_atoms_df, max_dist=10,leafsize=100):
         """ calculate the minimum distance of each atom in atoms_df from a lattice point in lattice_atoms_df
         

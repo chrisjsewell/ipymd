@@ -482,8 +482,12 @@ class Visualise_Sim(object):
         
     # TODO be able to paste one image on another, with different sizes and maintaining alpha values
         
-    def visualise(self, images, columns=1): 
+    def visualise(self, images, columns=1, width=None, height=None): 
         """ visualise image(s) in IPython
+        
+        When this object is returned by an input cell or passed to the
+        display function, it will result in the image being displayed
+        in the frontend.
         
         Parameters
         ----------
@@ -491,6 +495,10 @@ class Visualise_Sim(object):
             (x,y) denotes a blank space of size x,y e.g. [img1,(100,0),img2]
         columns : int
             number of image columns 
+        width : int
+            Width to which to constrain the image in html
+        height : int
+            Height to which to constrain the image in html
         
         Returns
         -------
@@ -527,7 +535,7 @@ class Visualise_Sim(object):
         data = b.getvalue()
         b.close() #del b
         
-        return ipy_Image(data=data)
+        return ipy_Image(data=data, width=width, height=height)
 
     def basic_vis(self, atoms_df=None, sim_box=None, 
                   spheres=True, illustrate=False, 
