@@ -118,9 +118,10 @@ class Atom_Analysis(object):
             lattice_df.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)))
 
         lattice_tree = cKDTree(lattice_df.df[['x','y','z']].values, leafsize=leafsize)
+        all_dists,all_ids = lattice_tree.query(coord_atoms_df[['x','y','z']].values, k=max_coord, distance_upper_bound=max_dist)
+        
         coords = []
-        for atom in coord_atoms_df[['x','y','z']].values:
-            dists,ids = lattice_tree.query(atom, k=max_coord, distance_upper_bound=max_dist)
+        for dists in all_dists:
             coords.append(np.count_nonzero(np.logical_and(dists>min_dist, dists<np.inf)))
         return coords
     
@@ -190,13 +191,10 @@ class Atom_Analysis(object):
         
         """
         lattice_tree = cKDTree(lattice_atoms_df[['x','y','z']].values, leafsize=leafsize)
-        min_dists = []
-        for atom in atoms_df[['x','y','z']].values:
-            dist,idnum = lattice_tree.query(atom, k=1, distance_upper_bound=max_dist)
-            min_dists.append(dist)
-        return min_dists
+        dists,idnums = lattice_tree.query(atoms_df[['x','y','z']].values, k=1, distance_upper_bound=max_dist)
+        return dists
 
-    def vacancy_identification(self, atoms_df, res=1., nn_dist=2., repeat_vectors=None, remove_dups=True,
+    def vacancy_identification(self, atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, remove_dups=True,
                  color='red',transparency=1.,radius=1, type_name='Vac', leafsize=100):
             """ identify vacancies
             
@@ -230,11 +228,12 @@ class Atom_Analysis(object):
                 lattice_df = repeat.df
             else:
                 lattice_df = atoms_df
+
             lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
+            dists,idnums = lattice_tree.query(xyz, k=1, distance_upper_bound=nn_dist)
     
             vac_list = []
-            for atom in xyz:
-                dist,idnum = lattice_tree.query(atom, k=1, distance_upper_bound=nn_dist)
+            for atom,dist in zip(xyz,dists):
                 if np.isinf(dist):
                     x,y,z = atom
                     vac_list.append([type_name,x,y,z,radius,color,transparency])
@@ -301,10 +300,12 @@ class Atom_Analysis(object):
         
         # create nearest neighbours dictionary
         lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
+        all_dists,all_ids = lattice_tree.query(lattice_df[['x','y','z']].values, k=max_neighbours+1, distance_upper_bound=upper_bound)
+        
         nn_ids = {}
         #nn_dists = {}
-        for atom_xyz in lattice_df[['x','y','z']].values:
-            dists,ids = lattice_tree.query(atom_xyz, k=max_neighbours+1, distance_upper_bound=upper_bound)
+        for dists,ids in zip(all_dists,all_ids):
+            
             mask = np.logical_and(dists>0.01, dists<np.inf)
             # assume first id is of that atom, i.e. dists[0]==0
             assert dists[0]==0, dists
