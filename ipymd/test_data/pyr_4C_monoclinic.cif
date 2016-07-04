@@ -1,0 +1,60 @@
+data_global
+_chemical_name_mineral 'Pyrrhotite'
+loop_
+_publ_author_name
+'Tokonami M'
+'Nishiguchi K'
+'Morimoto N'
+_journal_name_full 'American Mineralogist'
+_journal_volume 57 
+_journal_year 1972
+_journal_page_first 1066
+_journal_page_last 1080
+_publ_section_title
+;
+ Crystal structure of a monoclinic pyrrhotite (Fe7S8)
+;
+_database_code_amcsd 0000288
+_chemical_formula_sum 'Fe7 S8'
+_cell_length_a 11.902
+_cell_length_b 6.859
+_cell_length_c 22.787
+_cell_angle_alpha 90
+_cell_angle_beta 90.43
+_cell_angle_gamma 90
+_cell_volume 1860.183
+_exptl_crystal_density_diffrn      4.624
+_symmetry_space_group_name_H-M 'F 1 2/d 1'
+loop_
+_space_group_symop_operation_xyz
+  'x,y,z'
+  'x,1/2+y,1/2+z'
+  '1/2+x,y,1/2+z'
+  '1/2+x,1/2+y,z'
+  '1/4+x,-y,1/4+z'
+  '1/4+x,1/2-y,3/4+z'
+  '3/4+x,-y,3/4+z'
+  '3/4+x,1/2-y,1/4+z'
+  '3/4-x,y,3/4-z'
+  '3/4-x,1/2+y,1/4-z'
+  '1/4-x,y,1/4-z'
+  '1/4-x,1/2+y,3/4-z'
+  '1/2-x,-y,1/2-z'
+  '1/2-x,1/2-y,-z'
+  '-x,-y,-z'
+  '-x,1/2-y,1/2-z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+Fe1   0.38090   0.35000  -0.00630   0.01191
+Fe2   0.38160   0.36600   0.12340   0.01127
+Fe3   0.35870   0.39750   0.25010   0.00950
+Fe4   0.37500   0.35280   0.37500   0.01786
+S1   0.20610   0.36600  -0.06180   0.00988
+S2   0.54180   0.38330   0.05980   0.00773
+S3   0.20960   0.38580   0.18050   0.00633
+S4   0.54280   0.36450   0.30870   0.00823
+

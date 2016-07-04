@@ -6,7 +6,7 @@ Created on Tue May 17 14:19:07 2016
 """
 
 #import math
-#import pandas as pd
+import pandas as pd
 import numpy as np
 from scipy.spatial import ConvexHull, cKDTree
 from collections import Counter
@@ -170,10 +170,7 @@ class Atom_Analysis(object):
         df.loc[df['type']==coord_type,'coord_{0}_{1}'.format(coord_type, lattice_type)] = coords
         
         return df
-        
-    #TODO vacancy identification (Wigner-Seitz defect analysis)
-    #http://www.ovito.org/manual/particles.modifiers.wigner_seitz_analysis.html
-    # basically this method but reformed (compute coordination of interstitials?)
+            
     def compare_to_lattice(self, atoms_df, lattice_atoms_df, max_dist=10,leafsize=100):
         """ calculate the minimum distance of each atom in atoms_df from a lattice point in lattice_atoms_df
         
@@ -199,6 +196,60 @@ class Atom_Analysis(object):
             min_dists.append(dist)
         return min_dists
 
+    def vacancy_identification(self, atoms_df, res=1., nn_dist=2., repeat_vectors=None, remove_dups=True,
+                 color='red',transparency=1.,radius=1, type_name='Vac', leafsize=100):
+            """ identify vacancies
+            
+            atoms_df : pandas.Dataframe
+                atoms to calculate for
+            res : float
+                resolution of vacancy identification, i.e. spacing of reference lattice
+            nn_dist : float
+                maximum nearest-neighbour distance considered as a vacancy 
+            repeat_vectors : np.array((3,3))
+                include consideration of repeating boundary idenfined by a,b,c vectors
+            remove_dups : bool
+                only keep one vacancy site within the nearest-neighbour distance
+            leafsize : int
+                points at which the algorithm switches to brute-force (kdtree specific)
+            
+            Returns
+            -------
+            vac_df : pandas.DataFrame
+                new atom dataframe of vacancy sites as atoms
+            
+            """
+            xmin, xmax = atoms_df.x.min(),atoms_df.x.max()
+            ymin, ymax = atoms_df.y.min(),atoms_df.y.max()
+            zmin, zmax = atoms_df.z.min(),atoms_df.z.max()
+            xyz = np.mgrid[xmin:xmax:res, ymin:ymax:res, zmin:zmax:res].reshape(3,-1).T
+    
+            if repeat_vectors is not None:
+                repeat = Atom_Manipulation(atoms_df)
+                repeat.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)),original_first=True)
+                lattice_df = repeat.df
+            else:
+                lattice_df = atoms_df
+            lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
+    
+            vac_list = []
+            for atom in xyz:
+                dist,idnum = lattice_tree.query(atom, k=1, distance_upper_bound=nn_dist)
+                if np.isinf(dist):
+                    x,y,z = atom
+                    vac_list.append([type_name,x,y,z,radius,color,transparency])
+                    
+            df = pd.DataFrame(vac_list,columns=['type','x','y','z','radius','color','transparency'])
+            
+            if remove_dups and df.shape[0]>0:
+                vac_tree = cKDTree(df[['x','y','z']].values)
+                pairs = np.asarray(list(vac_tree.query_pairs(nn_dist)))
+                #drop first atom of each pair
+                if pairs.shape[0] > 0:
+                    df.drop(pairs[:,0],inplace=True)
+            
+            return df
+        
     #TODO group atoms into specified molecules e.g. S2 or CaCO3
     # http://chemwiki.ucdavis.edu/Textbook_Maps/Inorganic_Chemistry_Textbook_Maps/Map%3A_Inorganic_Chemistry_(Wikibook)/Chapter_08%3A_Ionic_and_Covalent_Solids_-_Structures/8.2%3A_Structures_related_to_NaCl_and_NiAs
     # maybe supply central atom type(s) and 'other' atoms type(s), filter df by required atom types, 
@@ -222,6 +273,8 @@ class Atom_Analysis(object):
         - BCC = 6 x 6,6,6 & 8 x 4,4,4
         - icosahedral = 12 x 5,5,5
         
+        Paramaters
+        ----------
         repeat_vectors : np.array((3,3))
             include consideration of repeating boundary idenfined by a,b,c vectors
         ipython_progress : bool
@@ -231,6 +284,7 @@ class Atom_Analysis(object):
         -------
         df : pandas.Dataframe
             copy of atoms_df with new column named cna
+
         """
         df = atoms_df.copy()
         max_id = df.shape[0] - 1 # starts at 0
@@ -313,8 +367,20 @@ class Atom_Analysis(object):
         - Diamond = 12 x 5,4,3 & 4 x 6,6,3
         - Icosahedral = 12 x 5,5,5
         
+        Parameters
+        ----------
         accuracy : float
             0 to 1 how accurate to fit to signature
+        repeat_vectors : np.array((3,3))
+            include consideration of repeating boundary idenfined by a,b,c vectors
+        ipython_progress : bool
+            print progress to IPython Notebook
+
+        Returns
+        -------
+        df : pandas.Dataframe
+            copy of atoms_df with new column named cna
+
         """
         df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
                                             repeat_vectors, leafsize=leafsize, 
@@ -353,6 +419,19 @@ class Atom_Analysis(object):
         - BCC = 6 x 6,6,6 & 8 x 4,4,4
         - Diamond = 12 x 5,4,3 & 4 x 6,6,3
         - Icosahedral = 12 x 5,5,5
+
+        Parameters
+        ----------
+        repeat_vectors : np.array((3,3))
+            include consideration of repeating boundary idenfined by a,b,c vectors
+        ipython_progress : bool
+            print progress to IPython Notebook
+
+        Returns
+        -------
+        counter : Counter
+            a counter of cna signatures
+
         """
         df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
                                             repeat_vectors, leafsize=leafsize, 
@@ -376,6 +455,19 @@ class Atom_Analysis(object):
         - BCC = 6 x 6,6,6 & 8 x 4,4,4
         - Diamond = 12 x 5,4,3 & 4 x 6,6,3
         - Icosahedral = 12 x 5,5,5
+
+        Parameters
+        ----------
+        repeat_vectors : np.array((3,3))
+            include consideration of repeating boundary idenfined by a,b,c vectors
+        ipython_progress : bool
+            print progress to IPython Notebook
+
+        Returns
+        -------
+        plot : matplotlib.pyplot
+            a matplotlib plot
+
         """
         df = self.common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
                                             repeat_vectors, leafsize=leafsize, 
