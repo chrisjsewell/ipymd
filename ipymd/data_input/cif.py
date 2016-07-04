@@ -178,7 +178,11 @@ class CIF(DataInput):
                     while len(cols) == len(atom_headers):
                         for i, name in enumerate(atom_headers):
                             data[name].append(cols[i])
-                        line = self._skiplines(f)
+                        
+                        try:
+                            line = self._skiplines(f)
+                        except:
+                            break
                         cols = line.split()
         
         # Return the extracted data.

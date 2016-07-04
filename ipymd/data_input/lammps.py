@@ -67,7 +67,8 @@ class LAMMPS_Input(DataInput):
                                                    float(line.split()[4]),
                                                    float(line.split()[5]))
                             atom_data.append([aid, atype, q, x, y, z])
-                        line = self._skiplines(f,1)
+                        if i != num_atoms-1:
+                            line = self._skiplines(f,1)
                         continue
         
                 if len(line.split()) < 2: continue

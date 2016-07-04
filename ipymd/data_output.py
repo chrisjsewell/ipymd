@@ -98,12 +98,12 @@ class Data_Output(object):
         yz = c[1]
         zhi = c[2] + zlo        
         
-        xlo_bound = xlo + min(0.0,xy,xz,xy+xz)
-        xhi_bound = xhi + max(0.0,xy,xz,xy+xz)
-        ylo_bound = ylo + min(0.0,yz)
-        yhi_bound = yhi + max(0.0,yz)
-        zlo_bound = zlo
-        zhi_bound = zhi
+        #xlo_bound = xlo + min(0.0,xy,xz,xy+xz)
+        #xhi_bound = xhi + max(0.0,xy,xz,xy+xz)
+        #ylo_bound = ylo + min(0.0,yz)
+        #yhi_bound = yhi + max(0.0,yz)
+        #zlo_bound = zlo
+        #zhi_bound = zhi
         
         num_atoms = self._atom_df.shape[0] 
         types = self._atom_df['type'].unique()
@@ -128,9 +128,9 @@ class Data_Output(object):
             f.write('\n')
             
             f.write('# simulation box boundaries\n')
-            f.write('{0:.4f} {1:.4f} xlo xhi \n'.format(xlo_bound, xhi_bound))
-            f.write('{0:.4f} {1:.4f} ylo yhi \n'.format(ylo_bound, yhi_bound))
-            f.write('{0:.4f} {1:.4f} zlo zhi \n'.format(zlo_bound, zhi_bound))
+            f.write('{0:.4f} {1:.4f} xlo xhi \n'.format(xlo, xhi))
+            f.write('{0:.4f} {1:.4f} ylo yhi \n'.format(ylo, yhi))
+            f.write('{0:.4f} {1:.4f} zlo zhi \n'.format(zlo, zhi))
             f.write('{0:.4f} {1:.4f} {1:.4f} xy xz yz \n'.format(xy, xz, yz))            
             f.write('\n')
             
