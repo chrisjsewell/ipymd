@@ -161,6 +161,24 @@ class Atom_Manipulation(object):
         for key, val in colormap.iteritems():
             self.change_type_variable(key, 'color', val, type_col)
     
+    def color_by_index(self, cmap='jet', minv=None, maxv=None):
+        """change colors to map index values 
+        
+        cmap : string
+            the colormap to apply, see available at http://matplotlib.org/examples/color/colormaps_reference.html
+        minv, maxv : float
+            optional min, max cmap value, otherwise take min, max value found in column
+            
+        """
+        colormap = cm.get_cmap(cmap)
+        var = self._atom_df.index
+        minval = var.min() if minv is None else minv
+        maxval = var.max() if maxv is None else maxv
+        norm = Normalize(minval, maxval,clip=True)
+        
+        self._atom_df = self._atom_df.copy()
+        self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
+
     def color_by_variable(self, colname, cmap='jet', minv=None, maxv=None):
         """change colors to map 
         
@@ -185,7 +203,7 @@ class Atom_Manipulation(object):
         """change colors to map 
         
         colname : string
-            a coloumn of the dataframe that contains numbers by which to color
+            a column of the dataframe that contains categories by which to color
         cmap : string
             the colormap to apply, see available at http://matplotlib.org/examples/color/colormaps_reference.html
             
@@ -385,4 +403,36 @@ class Atom_Manipulation(object):
         new_xyz = self._rotate(xyz, vector,angle)
         self._atom_df[['x','y','z']] = new_xyz
         
+    def group_atoms_as_mols(self, atom_ids, name, remove_atoms=True, mean_xyz=True,
+                            color='red',transparency=1.,radius=1.):
+        """ combine atoms into a molecule
+        atom_ids : list of lists
+            list of dataframe indexes for each molecule
+        name : string
+            name of molecule
+        remove_atoms : bool
+            remove the grouped atoms from the dataframe
+        mean_xyz : bool
+            use the mean coordinate of atoms for molecule, otherwise use coordinate of first atom
+            
+        """
+        # test no atoms in multiple molecules
+        all_atoms = np.asarray(atom_ids).flatten()  
+        assert len(set(all_atoms))==len(all_atoms), 'atoms in multiple molecules'
 
+        df = self._atom_df.copy()
+        mol_data = []
+        for atoms in atom_ids:
+            if mean_xyz:
+                x,y,z = df.loc[atoms,['x','y','z']].mean().values
+            else:
+                x,y,z = df.loc[atoms[0],['x','y','z']].values
+            mol_data.append([name,x,y,z,radius,color,transparency])
+            
+            if remove_atoms:
+                df.drop(atoms, inplace=True)
+
+        if mol_data:
+            moldf = pd.DataFrame(mol_data,columns=['type','x','y','z','radius','color','transparency'])
+            df = pd.concat([df,moldf])
+        self._atom_df = df

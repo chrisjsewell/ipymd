@@ -136,7 +136,7 @@ class Atom_Analysis(object):
             all atoms
         coord_type : string
             atoms to calcualte coordination of
-        lattice_atoms_df : string
+        lattice_type : string
             atoms to act as lattice for coordination
         max_dist : float
             maximum distance for coordination consideration
@@ -505,3 +505,61 @@ class Atom_Analysis(object):
         plt.ylabel('i,j,k')
         
         return plt
+
+    #TODO _group_molecules needs work
+    def _group_molecules(self,atom_df,moltypes,maxdist=3,repeat_vectors=None,
+                        mean_xyz=True,remove_atoms=True,
+                        color='red',transparency=1.,radius=1.,
+                        leafsize=100):
+        molname = ''.join(['{}_{}'.format(k,v) 
+                        for k,v in Counter(moltypes).iteritems()])
+    
+        search_df = atom_df[atom_df.type.isin([moltypes[0]])].copy()
+        old_index = search_df.index
+        search_df.reset_index(inplace=True)
+    
+        if repeat_vectors is not None:
+            manip = Atom_Manipulation(search_df)
+            manip.repeat_cell(repeat_vectors,repetitions=((-1,1), (-1,1), (-1, 1)),original_first=True)
+            lattice_df = manip.df
+            lattice_df.reset_index(inplace=True,drop=True)
+            rep_map = dict(zip(range(lattice_df.shape[0]),list(search_df.index)*27))
+        else:
+            lattice_df = search_df.copy()    
+            rep_map = dict(zip(range(search_df.shape[0]),list(search_df.index)))
+    
+        lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
+        dists,idnums = lattice_tree.query(search_df[['x','y','z']].values, k=len(moltypes), distance_upper_bound=maxdist)
+    
+        mol_data = []
+        used_repeat = []
+        for i,dist,idnum in zip(search_df.index, dists,idnums):
+            #print i, old_index[i], dist, [rep_map[m] for m in idnum]
+            if i in used_repeat:
+                continue    
+            mol = [i]
+            for j, d in zip(idnum[1:],dist[1:]):
+                if not j in mol and not np.isinf(d) and not rep_map.get(j) in used_repeat:
+                    #used_repeat.append(rep_map[j])
+                    mol.append(j)
+                else:
+                    print 'warning incomplete molecule'#, idnum, dist, j, rep_map.get(j)
+            
+            repeat_mol = [rep_map[m] for m in mol]
+            if len(mol) == len(moltypes):
+                
+                used_repeat.extend(repeat_mol)
+                if mean_xyz:
+                    x,y,z = search_df.loc[repeat_mol,['x','y','z']].mean().values
+                else:
+                    x,y,z = search_df.loc[i,['x','y','z']].values
+                mol_data.append([molname,x,y,z,radius,color,transparency])
+            #print i, repeat_mol
+    
+        df = atom_df.copy()
+        if remove_atoms:
+            df.drop(used_repeat, inplace=True)
+        if mol_data:
+            moldf = pd.DataFrame(mol_data,columns=['type','x','y','z','radius','color','transparency'])
+            df = pd.concat([df,moldf])
+        return df
