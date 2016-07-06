@@ -17,7 +17,7 @@ This package aims to provide a means of producing **reusable** analysis of Molec
 
     Analysis of the atomic coordination of Na, wrt Cl, for an NaCl nano-crystal.
 
-There are many programs for 3D visualisation of MD output (my favourite being [Ovito](http://www.ovito.org/index.php)). However, there lacks a means to produce a more thorough, documented analysis of the data. IPython Notebooks are ideal for this type of analysis and so the objective of `ipymd` is to produce a Python package that can be used in conjuction with programmes like Ovito, to produce documented and reuseable analysis.  
+There are many programs for 3D visualisation of MD output (my favourite being `Ovito <http://www.ovito.org>`__). However, there lacks a means to produce a more thorough, documented analysis of the data. IPython Notebooks are ideal for this type of analysis and so the objective of `ipymd` is to produce a Python package that can be used in conjuction with programmes like Ovito, to produce documented and reuseable analysis.  
 
 The aim of `ipymd` is to produce IPython Notebooks that include:
 
