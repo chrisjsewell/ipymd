@@ -8,6 +8,7 @@ Subpackages
 
     ipymd.chemlab_patch
     ipymd.data_input
+    ipymd.fonts
     ipymd.test_data
 
 Submodules
