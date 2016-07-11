@@ -11,7 +11,7 @@ In the IPython Notebook, the ipymd package must first be imported:
 
 .. parsed-literal::
 
-    0.1.0
+    0.2.0
 
 
 Basic Atom Creation and Visualisation
