@@ -16,6 +16,27 @@ import matplotlib.patches as mpatches
 
 from .atom_manipulation import Atom_Manipulation
 
+def unit_vector(vector):
+    """ Returns the unit vector of the vector.  """
+    return vector / np.linalg.norm(vector)
+
+def angle_between(v1, v2, rounded=None):
+    """ Returns the angle in radians between vectors 'v1' and 'v2'::
+
+            >>> angle_between((1, 0, 0), (0, 1, 0))
+            1.5707963267948966
+            >>> angle_between((1, 0, 0), (1, 0, 0))
+            0.0
+            >>> angle_between((1, 0, 0), (-1, 0, 0))
+            3.141592653589793
+    """
+    v1_u = unit_vector(v1)
+    v2_u = unit_vector(v2)
+    angle =  np.degrees(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
+    if rounded is not None:
+        angle = round(angle,rounded)
+    return angle
+    
 def _createTreeFromEdges(edges):
     """    
     e.g. _createTreeFromEdges([[1,2],[0,1],[2,3],[8,9],[0,3]])
@@ -65,12 +86,54 @@ class Atom_Analysis(object):
         """
         pass
     
-    def calc_volume_bb(self, vectors=np.array([[1,0,0],[0,1,0],[0,0,1]])):
+    def calc_volume_bb(self, vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]), rounded=None):
         """ calculate volume of the bounding box        
         """
         a,b,c = vectors
-        return a.dot(np.cross(b,c))
+        vol = a.dot(np.cross(b,c))
+        if rounded is not None:
+            vol = round(vol, rounded)
+        return vol
 
+    def calc_lattparams_bb(self, vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]),
+                         rounded=None, cells=(1,1,1)):
+        """ calculate unit cell parameters of the bounding box 
+        
+        Parmeters
+        ---------
+        rounded : int
+            the number of decimal places to return
+        cells : (int,int,int)
+            how many unit cells the vectors represent in each direction
+        
+        Returns
+        -------
+        a, b, c, alpha, beta, gamma
+        
+        """
+        
+        a,b,c = vectors
+        a0,b0,c0 = cells
+        a = a/a0
+        b = b/b0
+        c = c/c0
+        
+        a_length = np.linalg.norm(a)
+        b_length = np.linalg.norm(b)
+        c_length = np.linalg.norm(c)
+        
+        if rounded is not None:
+            a_length = round(a_length, rounded)
+            b_length = round(b_length, rounded)
+            c_length = round(c_length, rounded)
+
+        alpha = angle_between(b,c, rounded)
+        beta = angle_between(a,c, rounded)
+        gamma = angle_between(a,b, rounded)
+        
+        return a_length, b_length, c_length, alpha, beta, gamma
+        
+        
     def calc_density_bb(self,atoms_df, vectors=np.array([[1,0,0],[0,1,0],[0,0,1]])):
         """ calculate density of the bounding box (assuming all atoms are inside)
         """
@@ -87,6 +150,53 @@ class Atom_Analysis(object):
         hull = ConvexHull(points)
         return hull.volume
     
+    def calc_bond_lengths(self,atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
+                          repeat_vectors=None, rounded=2, min_dist=0.01, leafsize=100):
+        """ calculate the unique bond lengths atoms in coords_atoms, w.r.t lattice_atoms
+        
+        atoms_df : pandas.Dataframe
+            all atoms
+        coord_type : string
+            atoms to calcualte coordination of
+        lattice_type : string
+            atoms to act as lattice for coordination
+        max_dist : float
+            maximum distance for coordination consideration
+        max_coord : float
+            maximum possible coordination number
+        repeat_vectors : np.array((3,3))
+            include consideration of repeating boundary idenfined by a,b,c vectors
+        min_dist : float
+            lattice points within this distance of the atom will be ignored (assumed self-interaction)
+        leafsize : int
+            points at which the algorithm switches to brute-force (kdtree specific)
+        
+        Returns
+        -------
+        distances : set
+            list of unique distances
+        
+        """
+        coord_df = Atom_Manipulation(atoms_df)
+        coord_df.filter_variables(coord_type)
+       
+        lattice_df = Atom_Manipulation(atoms_df)
+        lattice_df.filter_variables(lattice_type)
+        
+        if repeat_vectors is not None:
+            lattice_df.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)))
+
+        lattice_tree = cKDTree(lattice_df.df[['x','y','z']].values, leafsize=leafsize)
+        all_dists,all_ids = lattice_tree.query(coord_df.df[['x','y','z']].values, k=max_coord, distance_upper_bound=max_dist)
+        
+        distances = []
+        for dists in all_dists:
+            for d in dists:
+                if d > min_dist and not np.isinf(d):
+                    distances.append(round(d,rounded))
+            
+        return sorted(set(distances))
+
     def calc_coordination(self,coord_atoms_df, lattice_atoms_df, max_dist=4, max_coord=16,
                           repeat_vectors=None, min_dist=0.01, leafsize=100):
         """ calculate the coordination number of each atom in coords_atoms, w.r.t lattice_atoms
@@ -195,7 +305,8 @@ class Atom_Analysis(object):
         return dists
 
     def vacancy_identification(self, atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, remove_dups=True,
-                 color='red',transparency=1.,radius=1, type_name='Vac', leafsize=100):
+                 color='red',transparency=1.,radius=1, type_name='Vac', leafsize=100, 
+                 n_jobs=1, ipython_progress=False, ):
             """ identify vacancies
             
             atoms_df : pandas.Dataframe
@@ -210,6 +321,10 @@ class Atom_Analysis(object):
                 only keep one vacancy site within the nearest-neighbour distance
             leafsize : int
                 points at which the algorithm switches to brute-force (kdtree specific)
+            n_jobs : int, optional
+                Number of jobs to schedule for parallel processing. If -1 is given all processors are used. 
+            ipython_progress : bool
+                print progress to IPython Notebook
             
             Returns
             -------
@@ -229,8 +344,17 @@ class Atom_Analysis(object):
             else:
                 lattice_df = atoms_df
 
+            if ipython_progress:
+                clear_output()
+                print('creating nearest neighbour tree')
+            
             lattice_tree = cKDTree(lattice_df[['x','y','z']].values, leafsize=leafsize)
-            dists,idnums = lattice_tree.query(xyz, k=1, distance_upper_bound=nn_dist)
+
+            if ipython_progress:
+                clear_output()
+                print('assessing nearest neighbours')
+
+            dists,idnums = lattice_tree.query(xyz, k=1, distance_upper_bound=nn_dist,n_jobs=n_jobs)
     
             vac_list = []
             for atom,dist in zip(xyz,dists):
@@ -246,6 +370,9 @@ class Atom_Analysis(object):
                 #drop first atom of each pair
                 if pairs.shape[0] > 0:
                     df.drop(pairs[:,0],inplace=True)
+
+            if ipython_progress:
+                clear_output()
             
             return df
         
@@ -395,7 +522,7 @@ class Atom_Analysis(object):
                 atype.append('HCP')
             elif self._equala(counter['4,2,1'],12,accuracy):
                 atype.append('FCC')
-            elif self._equala(counter['6,6,6'],6,accuracy) and self._equala(counter['4,4,4'],8,accuracy):
+            elif self._equala(counter['6,6,6'],8,accuracy) and self._equala(counter['4,4,4'],6,accuracy):
                 atype.append('BCC')
             elif self._equala(counter['5,4,3'],12,accuracy) and self._equala(counter['6,6,3'],4,accuracy):
                 atype.append('Diamond')

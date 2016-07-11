@@ -214,6 +214,11 @@ class Atom_Manipulation(object):
         if sort:
             unique_cats = sorted(unique_cats)
         num_cats = float(cats.nunique())
+        
+        #potential way to always have a string the same color
+        #for cat in unique_cats:
+            #[(ord(c)-97)/122. for c in cat.lower() if ord(c)>=97 and ord(c)<=122]        
+        
         color_dict = dict([(cat,colormap(i/num_cats,bytes=True)[:3]) for i,cat in enumerate(unique_cats)])
         
         self._atom_df = self._atom_df.copy()
