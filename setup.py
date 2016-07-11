@@ -29,7 +29,7 @@ def version(path):
     return verstr
 
 setup(name='ipymd',
-      version="0.2.0",
+      version=version("ipymd/_version.py"),
       description='Analysis of Molecular Dynamics output in the IPython Notebooks',
       keywords = "chemistry physics molecular dynamics",
       long_description=readme('setup_README.rst',
