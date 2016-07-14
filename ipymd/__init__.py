@@ -9,7 +9,7 @@ from . import data_input
 from . import data_output
 from . import visualise_sim
 from . import atom_manipulation
-from . import atom_analysis
+from .atom_analysis import atom_analysis
 from . import plotting 
 from . import _colors
 

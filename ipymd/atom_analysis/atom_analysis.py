@@ -14,7 +14,7 @@ from IPython.core.display import clear_output
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
-from .atom_manipulation import Atom_Manipulation
+from ..atom_manipulation import Atom_Manipulation
 
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
