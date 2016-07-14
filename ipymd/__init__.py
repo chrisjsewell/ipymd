@@ -9,7 +9,7 @@ from . import data_input
 from . import data_output
 from . import visualise_sim
 from . import atom_manipulation
-from .atom_analysis import atom_analysis
+from . import atom_analysis
 from . import plotting 
 from . import _colors
 
@@ -25,13 +25,13 @@ import os
 import inspect
 from . import test_data
 
-def get_test_path(data, check_exists=False):
-    """return a directory path to the test data
+def get_data_path(data, check_exists=False, module=test_data):
+    """return a directory path to data within a module
 
     data : str or list of str
         file name or list of sub-directories and file name (e.g. ['lammps','data.txt'])   
     """
-    basepath = os.path.dirname(os.path.abspath(inspect.getfile(test_data)))
+    basepath = os.path.dirname(os.path.abspath(inspect.getfile(module)))
     
     if isinstance(data, basestring): data = [data]
     

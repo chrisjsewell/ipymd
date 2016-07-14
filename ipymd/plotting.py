@@ -20,7 +20,8 @@ class Plotting(object):
         """
         #ensure IPython shows matplotlib in inline mode
         ipython = get_ipython()
-        ipython.run_line_magic('matplotlib', 'inline')
+        if ipython is not None:
+            ipython.run_line_magic('matplotlib', 'inline')
 
         if nrows==0 and ncols==0:
             self._fig = plt.figure(figsize=figsize)
@@ -51,6 +52,8 @@ class Plotting(object):
         
         """
         ipython = get_ipython()
+        if ipython is None:
+            raise RuntimeError('not in an ipython shell')
         current_config = ipython.run_line_magic('config', "InlineBackend.print_figure_kwargs")
         new_config = current_config.copy()        
         if tight_layout:

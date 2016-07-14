@@ -11,7 +11,8 @@ In the IPython Notebook, the ipymd package must first be imported:
 
 .. parsed-literal::
 
-    0.2.0
+    0.3.0
+
 
 
 Basic Atom Creation and Visualisation
@@ -59,7 +60,7 @@ which is returned in the form of a ``PIL`` image.
 
 .. parsed-literal::
 
-    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x1581DBA70>
+    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x117DC6D88>
 
 
 
@@ -303,7 +304,7 @@ loaded as follows:
 
 .. code:: python
 
-    cif_path = ipymd.get_test_path('example_crystal.cif')
+    cif_path = ipymd.get_data_path('example_crystal.cif')
     data = ipymd.data_input.cif.CIF(cif_path)
     vis = ipymd.visualise_sim.Visualise_Sim()
     vis.basic_vis(data.get_atom_data(), data.get_simulation_box(),
@@ -372,7 +373,7 @@ to.
 
 .. code:: python
 
-    lammps_path = ipymd.get_test_path('lammps_input.data')
+    lammps_path = ipymd.get_data_path('lammps_input.data')
     data = ipymd.data_input.lammps.LAMMPS_Input(lammps_path)
     
     vis = ipymd.visualise_sim.Visualise_Sim()
@@ -396,7 +397,7 @@ define which timestep is returned.
 
 .. code:: python
 
-    lammps_path = ipymd.get_test_path('atom_onefile.dump')
+    lammps_path = ipymd.get_data_path('atom_onefile.dump')
     data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
     
     vis = ipymd.visualise_sim.Visualise_Sim()
@@ -412,7 +413,7 @@ define which timestep is returned.
 
 .. code:: python
 
-    lammps_path = ipymd.get_test_path(['atom_dump','atoms_*.dump'])
+    lammps_path = ipymd.get_data_path(['atom_dump','atoms_*.dump'])
     data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
     print data.count_timesteps()
     
@@ -492,7 +493,8 @@ Geometric Analysis
 Given the simple and flexible form of the atomic data and visualisation,
 it is now easier to add more complex geometric analysis. These analyses
 are being contained in the ``Atom_Analysis`` class, and some initial
-examples are detailed below:
+examples are detailed below. Many are based on the
+``scipy.spatial.cKDTree`` algorithm for identifying nearest neighbours.
 
 Atomic Coordination
 ^^^^^^^^^^^^^^^^^^^
@@ -511,48 +513,28 @@ Cl lattice in each direction before computation.
         225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
         repetitions=[5, 5, 5])
     df = data.get_atom_data()
-    df['coord'] = 0
     
-    analysis = ipymd.atom_analysis.Atom_Analysis()
-    
-    coord_df = manipulate_atoms(df)
-    coord_df.filter_variables('Na')
-    
-    lattice_df = manipulate_atoms(df)
-    lattice_df.filter_variables('Cl')
-    
-    na_coord = analysis.calc_coordination(coord_df.df,lattice_df.df)
-    
-    df.loc[df['type'] == 'Na','coord'] = na_coord
+    df = ipymd.atom_analysis.nearest_neighbour.coordination_bytype(df, 'Na','Cl')
     
     new_df = manipulate_atoms(df)
     new_df.filter_variables('Na')
-    new_df.color_by_variable('coord',minv=3,maxv=7)
+    new_df.color_by_variable('coord_Na_Cl',minv=3,maxv=7)
     
     vis = ipymd.visualise_sim.Visualise_Sim()
+    vis.add_axes(offset=(0,-0.3))
     vis.add_box(*data.get_simulation_box())
     vis.add_atoms(new_df.df)
     
     img = vis.get_image(xrot=45,yrot=45)
     
-    img2 = ipymd.plotting.create_legend_image(new_df.df.coord,new_df.df.color, title='Na Coordination',size=150,colbytes=True)
+    img2 = ipymd.plotting.create_legend_image(new_df.df.coord_Na_Cl,new_df.df.color, title='Na Coordination',size=150,colbytes=True)
     
     vis.visualise([img,img2],columns=2)
 
 
-.. parsed-literal::
-
-    //anaconda/envs/ipymd/lib/python2.7/site-packages/pandas/core/generic.py:2177: SettingWithCopyWarning: 
-    A value is trying to be set on a copy of a slice from a DataFrame.
-    Try using .loc[row_indexer,col_indexer] = value instead
-    
-    See the the caveats in the documentation: http://pandas.pydata.org/pandas-docs/stable/indexing.html#indexing-view-versus-copy
-      self[name] = value
 
 
-
-
-.. image:: images/output_45_1.png
+.. image:: images/output_45_0.png
 
 
 
@@ -564,7 +546,8 @@ Cl lattice in each direction before computation.
         repetitions=[5, 5, 5])
     df = data.get_atom_data()
     
-    df = analysis.calc_type_coordination(df, 'Na','Cl',repeat_vectors=data.get_simulation_box()[0])
+    df = ipymd.atom_analysis.nearest_neighbour.coordination_bytype(
+        df, 'Na','Cl',repeat_vectors=data.get_simulation_box()[0])
     
     new_df = manipulate_atoms(df)
     new_df.filter_variables('Na')
@@ -572,6 +555,7 @@ Cl lattice in each direction before computation.
     
     vis = ipymd.visualise_sim.Visualise_Sim()
     vis.add_box(*data.get_simulation_box())
+    vis.add_axes(offset=(0,-0.3))
     vis.add_atoms(new_df.df)
     
     img = vis.get_image(xrot=45,yrot=45)
@@ -603,7 +587,7 @@ the distance to the nearest atom (i.e. lattice site) in df2:
     df1 = data1.get_atom_data()
     
     print ('Average distance to nearest atom (identical)', 
-           np.mean(analysis.compare_to_lattice(df1,df1)))
+           np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df1)))
     
     data2 = ipymd.data_input.crystal.Crystal(
         [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
@@ -612,7 +596,7 @@ the distance to the nearest atom (i.e. lattice site) in df2:
     df2 = data2.get_atom_data()
     
     print ('Average distance to nearest atom (different)', 
-           np.mean(analysis.compare_to_lattice(df1,df2)))
+           np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df2)))
 
 
 
@@ -676,11 +660,10 @@ which are tested below:
 
 .. code:: python
 
-    analysis= ipymd.atom_analysis.Atom_Analysis()
-    print analysis.cna_sum(fcc_df,repeat_vectors=fcc_vector)
-    print analysis.cna_sum(hcp_df,repeat_vectors=hcp_vector)
-    print analysis.cna_sum(bcc_df,repeat_vectors=bcc_vector)
-    print analysis.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
+    print ipymd.atom_analysis.nearest_neighbour.cna_sum(fcc_df,repeat_vectors=fcc_vector)
+    print ipymd.atom_analysis.nearest_neighbour.cna_sum(hcp_df,repeat_vectors=hcp_vector)
+    print ipymd.atom_analysis.nearest_neighbour.cna_sum(bcc_df,repeat_vectors=bcc_vector)
+    print ipymd.atom_analysis.nearest_neighbour.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
 
 
 .. parsed-literal::
@@ -695,7 +678,7 @@ For each atom, the CNA for each nearest-neighbour can be output:
 
 .. code:: python
 
-    analysis.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
+    ipymd.atom_analysis.nearest_neighbour.common_neighbour_analysis(hcp_df,repeat_vectors=hcp_vector).head(5)
 
 
 
@@ -790,11 +773,11 @@ unknown structure:
 
 .. code:: python
 
-    lammps_path = ipymd.get_test_path('thermalized_troilite.dump')
+    lammps_path = ipymd.get_data_path('thermalized_troilite.dump')
     data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
     df = data.get_atom_data(0)
     df = df[df.type==1]
-    plt = analysis.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
+    plt = ipymd.atom_analysis.nearest_neighbour.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
 
 
 
@@ -807,12 +790,13 @@ allows for more robust fitting to the ideal signatures:
 
 .. code:: python
 
-    lammps_path = ipymd.get_test_path('thermalized_troilite.dump')
+    lammps_path = ipymd.get_data_path('thermalized_troilite.dump')
     data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
     
     df = data.get_atom_data()
     df = df[df.type==1]
-    df = analysis.cna_categories(df,repeat_vectors=data.get_simulation_box()[0],accuracy=0.7)
+    df = ipymd.atom_analysis.nearest_neighbour.cna_categories(
+        df,repeat_vectors=data.get_simulation_box()[0],accuracy=0.7)
     manip = ipymd.atom_manipulation.Atom_Manipulation(df)
     manip.color_by_categories('cna')
     #manip.apply_colormap({'Other':'blue','FCC':'green','HCP':'red'}, type_col='cna')
@@ -823,7 +807,7 @@ allows for more robust fitting to the ideal signatures:
     vis.add_box(*data.get_simulation_box())
     vis.add_atoms(atom_df)
     
-    img = vis.get_image(xrot=45,yrot=45)
+    img = vis.get_image(xrot=90)
     
     img2 = ipymd.plotting.create_legend_image(atom_df.cna,atom_df.color, 
                     title='CNA Category\nof Fe Sublattice',size=150,colbytes=True)
@@ -837,6 +821,77 @@ allows for more robust fitting to the ideal signatures:
 
 
 
+Vacany Identification
+^^^^^^^^^^^^^^^^^^^^^
+
+The ``vacancy_identification`` method finds grid sites with no atoms
+within a specified distance:
+
+.. code:: python
+
+    cif_path = ipymd.get_data_path('pyr_4C_monoclinic.cif')
+    data = ipymd.data_input.cif.CIF(cif_path)
+    cif4c_df, (cif4c_abc, cif4c_origin) = data.get_atom_data(), data.get_simulation_box()
+    vac_df = ipymd.atom_analysis.nearest_neighbour.vacancy_identification(cif4c_df,0.2,2.3,cif4c_abc,
+                                             radius=2.3,remove_dups=True)
+    vis = ipymd.visualise_sim.Visualise_Sim()
+    vis.add_atoms(vac_df)
+    vis.add_box(cif4c_abc)
+    vis.add_atoms(cif4c_df)
+    vis.visualise([vis.get_image(xrot=90,yrot=10),
+                   vis.get_image(xrot=45,yrot=45)],columns=2)
+
+
+
+
+.. image:: images/output_62_0.png
+
+
+
+XRD Spectrum Prediction
+^^^^^^^^^^^^^^^^^^^^^^^
+
+This is an implementation of the virtual x-ray diffraction pattern
+algorithm, from http://http://dx.doi.org/10.1007/s11837-013-0829-3.
+
+.. code:: python
+
+    data = ipymd.data_input.crystal.Crystal(
+        [[0,0,0]], ['Fe'], 
+        229, cellpar=[2.866, 2.866, 2.866, 90, 90, 90], 
+        repetitions=[5,5,5])
+    
+    sim_abc, sim_origin = data.get_simulation_box()
+    atoms_df = data.get_atom_data()
+    
+    wlambda = 1.542 # Angstrom (Cu K-alpha)
+    thetas, Is = ipymd.atom_analysis.spectral.compute_xrd(atoms_df,sim_abc,wlambda)
+    plot = ipymd.atom_analysis.spectral.plot_xrd_hist(thetas,Is,wlambda=wlambda,barwidth=1)
+    plot.axes[0].set_xlim(20,90)
+    plot.display_plot()
+
+
+
+.. image:: images/output_65_0.png
+
+
+The predicted spectrum peaks (for alpha-Fe) shows good correlation with
+experimentally derived data:
+
+.. code:: python
+
+    from IPython.display import Image
+    exp_path = ipymd.get_data_path('xrd_fe_bcc_Cu_kalpha.png',
+                              module=ipymd.atom_analysis)
+    Image(exp_path,width=380)
+
+
+
+
+.. image:: images/output_67_0.png
+
+
+
 System Analysis
 ~~~~~~~~~~~~~~~
 
@@ -847,7 +902,7 @@ timestep.
 .. code:: python
 
     data = ipymd.data_input.lammps.LAMMPS_Output(
-        sys_path=ipymd.get_test_path('system.dump'))
+        sys_path=ipymd.get_data_path('system.dump'))
 
 .. code:: python
 
@@ -963,4 +1018,5 @@ timestep.
 
 
 
-.. image:: images/output_64_0.png
+.. image:: images/output_72_0.png
+
