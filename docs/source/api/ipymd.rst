@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    ipymd.atom_analysis
     ipymd.chemlab_patch
     ipymd.data_input
     ipymd.fonts
@@ -13,14 +14,6 @@ Subpackages
 
 Submodules
 ----------
-
-ipymd.atom_analysis module
---------------------------
-
-.. automodule:: ipymd.atom_analysis
-    :members:
-    :undoc-members:
-    :show-inheritance:
 
 ipymd.atom_manipulation module
 ------------------------------
