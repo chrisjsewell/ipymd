@@ -1,4 +1,5 @@
 # IPython Molecular Dynamics Analysis (ipyMD)
+[![Anaconda-Server Badge](https://anaconda.org/cjs14/ipymd/badges/version.svg)](https://anaconda.org/cjs14/ipymd)
 
 This package aims to provide a means of producing **reusable** analysis of Molecular Dynamics (MD) output in the IPython Notebook.
 
