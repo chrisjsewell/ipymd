@@ -310,7 +310,7 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
     Notes
     -----
     This is an implementation of the virtual x-ray diffraction pattern algorithm
-    by Coleman \textit{et al}.[1]_
+    by Coleman *et al*. [ref1]_
     
     The algorithm proceeds in the following manner:
 
@@ -365,7 +365,8 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
     
     References
     ----------
-    .. [1] 1.Coleman, S. P., Sichani, M. M. & Spearot, D. E. 
+    
+    .. [ref1] 1.Coleman, S. P., Sichani, M. M. & Spearot, D. E. 
         A Computational Algorithm to Produce Virtual X-ray and Electron Diffraction 
         Patterns from Atomistic Simulations. JOM 66, 408–416 (2014).
 
