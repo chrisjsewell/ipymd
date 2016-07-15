@@ -1,7 +1,8 @@
 Quick Start
 -----------------
 
-.. image:: https://anaconda.org/cjs14/ipymd/badges/version.svg   :target: https://anaconda.org/cjs14/ipymd
+.. image:: https://anaconda.org/cjs14/ipymd/badges/version.svg   
+    :target: https://anaconda.org/cjs14/ipymd
 
 `Anaconda <https://www.continuum.io/>`__ is recommended to create a
 Python environment within which to use ipymd:
