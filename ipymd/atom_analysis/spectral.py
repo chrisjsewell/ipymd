@@ -2,14 +2,15 @@
 """
 Created on Tue Jul 12 20:18:04 2016
 
-Derived from:  LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
-   Steve Plimpton, sjplimp@sandia.gov
-   Copyright (2003) Sandia Corporation.  Under the terms of Contract
-   DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
-   certain rights in this software.  This software is distributed under
-   the GNU General Public License.
-   https://github.com/lammps/lammps/tree/lammps-icms/src/USER-DIFFRACTION
+Derived from:  
+LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
+http://lammps.sandia.gov, Sandia National Laboratories
+Steve Plimpton, sjplimp@sandia.gov
+Copyright (2003) Sandia Corporation.  Under the terms of Contract
+DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
+certain rights in this software.  This software is distributed under
+the GNU General Public License.
+https://github.com/lammps/lammps/tree/lammps-icms/src/USER-DIFFRACTION
    
 This package contains the commands neeed to calculate x-ray and
 electron diffraction intensities based on kinematic diffraction 
@@ -32,7 +33,7 @@ of virtual diffraction calculations, XSEDE14,
 doi:10.1145/2616498.2616552
 
 
-@author: cjs14
+@author: chris sewell
 """
 #TODO Averaging over (thermal) phase space
 #TODO Analysis of triclinic cells
