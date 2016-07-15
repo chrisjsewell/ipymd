@@ -330,7 +330,7 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
         
     and are restricted to within the Eswald's sphere, as illustrated:
         
-    .. image:: images/xrd_mesh.jpg
+    .. image:: ../images/xrd_mesh.jpg
     
     The atomic scattering factors, fj, accounts for the reduction in 
     diffraction intensity due to Compton scattering, with coefficients based on 

@@ -99,7 +99,7 @@ output at once, as shown in the following example:
 
 
 
-Images can also be added to plots, with the ``Plotting`` class:
+Images can also be added to plots, with the ``Plotter`` class:
 
 .. code:: python
 
@@ -491,11 +491,7 @@ the same as in chemlab (``ipymd.atom_manipulation.default_atom_map``).
 Geometric Analysis
 ~~~~~~~~~~~~~~~~~~
 
-Given the simple and flexible form of the atomic data and visualisation,
-it is now easier to add more complex geometric analysis. These analyses
-are being contained in the ``Atom_Analysis`` class, and some initial
-examples are detailed below. Many are based on the
-``scipy.spatial.cKDTree`` algorithm for identifying nearest neighbours.
+Given the simple and flexible form of the atomic data and visualisation, it is now easier to add more comp`lex geometric analysis. These analyses are being contained in the ``atom_analysis` package, and some initial examples are detailed below. Functions in the ``atom_analysis.nearest_neighbour`` package are based on the ``scipy.spatial.cKDTree`` algorithm for identifying nearest neighbours.
 
 Atomic Coordination
 ^^^^^^^^^^^^^^^^^^^
