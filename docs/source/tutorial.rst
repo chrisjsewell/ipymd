@@ -14,7 +14,6 @@ In the IPython Notebook, the ipymd package must first be imported:
     0.3.0
 
 
-
 Basic Atom Creation and Visualisation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -60,7 +59,7 @@ which is returned in the form of a ``PIL`` image.
 
 .. parsed-literal::
 
-    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x117DC6D88>
+    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x118EF3B90>
 
 
 
@@ -104,12 +103,14 @@ Images can also be added to plots, with the ``Plotting`` class:
 
 .. code:: python
 
-    plot = ipymd.plotting.Plotting()
-    plot.axes[0].scatter([0,0.5,1.2],[0,0.5,1])
-    plot.axes[0].grid(True)
+    plot = ipymd.plotting.Plotter(figsize=(5,3))
+    plot.axes.scatter([0,0.5,1.2],[0,0.5,1])
+    plot.axes.set_xlabel('some variable')
+    plot.axes.set_ylabel('some other variable')
     plot.add_image_annotation(img2,(250,100),(0.5,0.5),zoom=0.5)
-    plot.resize_axes(width=0.5)
-    plot.display_plot(tight_layout=False)
+    #plot.resize_axes(width=0.5)
+    plot.apply_xkcd_style()
+    plot.display_plot(tight_layout=True)
 
 
 
@@ -777,7 +778,8 @@ unknown structure:
     data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
     df = data.get_atom_data(0)
     df = df[df.type==1]
-    plt = ipymd.atom_analysis.nearest_neighbour.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
+    plot = ipymd.atom_analysis.nearest_neighbour.cna_plot(df,repeat_vectors=data.get_simulation_box(0)[0])
+    plot.display_plot()
 
 
 
@@ -867,8 +869,8 @@ algorithm, from http://http://dx.doi.org/10.1007/s11837-013-0829-3.
     wlambda = 1.542 # Angstrom (Cu K-alpha)
     thetas, Is = ipymd.atom_analysis.spectral.compute_xrd(atoms_df,sim_abc,wlambda)
     plot = ipymd.atom_analysis.spectral.plot_xrd_hist(thetas,Is,wlambda=wlambda,barwidth=1)
-    plot.axes[0].set_xlim(20,90)
-    plot.display_plot()
+    plot.axes.set_xlim(20,90)
+    plot.display_plot(True)
 
 
 
@@ -1019,4 +1021,3 @@ timestep.
 
 
 .. image:: images/output_72_0.png
-
