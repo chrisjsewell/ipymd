@@ -38,8 +38,8 @@ from .chemlab_patch.triangle import TriangleRenderer
 from .chemlab_patch.box import BoxRenderer
 from .chemlab_patch.hexagon import HexagonRenderer
 
-from . import fonts
-from ._get_data_path import get_data_path
+from .. import fonts
+from .._get_data_path import get_data_path
 
 class Visualise_Sim(object):
     """ 
