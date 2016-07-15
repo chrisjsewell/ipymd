@@ -11,33 +11,11 @@ from . import visualise_sim
 from . import atom_manipulation
 from . import atom_analysis
 from . import plotting 
-from . import _colors
+from ._colors import available_colors
+from ._get_data_path import get_data_path 
 
 from ._version import __version__
 
 def version():
     return __version__
-         
-def available_colors():
-    return _colors.col_dict.copy()
 
-import os
-import inspect
-from . import test_data
-
-def get_data_path(data, check_exists=False, module=test_data):
-    """return a directory path to data within a module
-
-    data : str or list of str
-        file name or list of sub-directories and file name (e.g. ['lammps','data.txt'])   
-    """
-    basepath = os.path.dirname(os.path.abspath(inspect.getfile(module)))
-    
-    if isinstance(data, basestring): data = [data]
-    
-    dirpath = os.path.join(basepath, *data)
-    
-    if check_exists:
-        assert os.path.exists(dirpath), '{0} does not exist'.format(dirpath)
-    
-    return dirpath

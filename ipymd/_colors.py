@@ -32,3 +32,6 @@ col_dict = {
     'cadet_blue', 'dark_cyan', 'teal'], 
 'reds': ['light_salmon', 'salmon', 'dark_salmon', 
          'light_coral', 'indian_red', 'crimson', 'fire_brick', 'dark_red', 'red']}
+
+def available_colors():
+    return col_dict.copy()

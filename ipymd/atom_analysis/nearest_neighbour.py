@@ -12,10 +12,10 @@ import numpy as np
 from scipy.spatial import cKDTree
 from collections import Counter
 from IPython.core.display import clear_output
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 
 from ..atom_manipulation import Atom_Manipulation
+from ..plotting import Plotter
 
 def _createTreeFromEdges(edges):
     """    
@@ -526,15 +526,16 @@ def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
         else:
             colors.append('blue')
            
-    plt.barh(indexes, values, barwidth, color=colors)
-    plt.yticks(indexes + barwidth * 0.5, labels)
-    plt.grid(True)
+    plot = Plotter()
+    plot.axes.barh(indexes, values, barwidth, color=colors)
+    plot.axes.set_yticks(indexes + barwidth * 0.5, labels)
+    plot.axes.grid(True)
     if patches:
-        plt.legend(handles=patches)
+        plot.axes.legend(handles=patches)
 
-    plt.ylabel('i,j,k')
+    plot.axes.set_ylabel('i,j,k')
     
-    return plt
+    return plot
 
 #TODO _group_molecules needs work
 def _group_molecules(atom_df,moltypes,maxdist=3,repeat_vectors=None,

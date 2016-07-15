@@ -5,18 +5,27 @@ Created on Fri Jul  1 16:45:06 2016
 @author: cjs14
 """
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 from io import BytesIO
 from IPython import get_ipython, display
-from chemlab.graphics.colors import get as str_to_colour
 
-class Plotting(object):
+from ._xkcdify import _XKCDify
+    
+class Plotter(object):
     """ a class to deal with data plotting """
     def __init__(self,nrows=1,ncols=1,figsize=(5,4)):
         """ a class to deal with data plotting 
+        
+        Attributes
+        ----------
+        figure : matplotlib.figure
+            the figure
+        axes : list or single matplotlib.axes
+            if more than one then returns a list (ordered in reading direction),
+            else returns one instance
+            
         """
         #ensure IPython shows matplotlib in inline mode
         ipython = get_ipython()
@@ -41,7 +50,10 @@ class Plotting(object):
     figure = property(_get_mplfigure, _set_mplfigure)
     
     def _get_axes(self,):
-        return self._axes
+        if len(self._axes) == 1:
+            return self._axes[0]
+        else:
+            return self._axes
     
     axes = property(_get_axes)
     
@@ -63,7 +75,7 @@ class Plotting(object):
 
         ipython.run_line_magic('config', 
             'InlineBackend.print_figure_kwargs = {0}'.format(new_config))
-
+        
         display.display(self._fig)
 
         ipython.run_line_magic('config', 
@@ -88,6 +100,41 @@ class Plotting(object):
         """ resiaze axes, for instance to fit object outside of it """
         self._axes[axes].set_position([left,bottom,width,height])
 
+    def apply_xkcd_style(self,axes=0,mag=1.0,
+            f1=50, f2=0.01, f3=15,
+            bgcolor='w',
+            xaxis_loc=None, yaxis_loc=None,
+            xaxis_arrow='+', yaxis_arrow='+',
+            ax_extend=0.1):
+        """ apply the xkcd style to one or more axes i.e. for schematic plots.
+        This should be done after the axes is finalised (i.e everthing plotted)
+        
+        Parameters
+        ----------
+        axes : int or list of ints
+            the axes to be modified.
+        mag : float
+            the magnitude of the distortion
+        f1, f2, f3 : int, float, int
+            filtering parameters.  f1 gives the size of the window, f2 gives
+            the high-frequency cutoff, f3 gives the size of the filter
+        xaxis_loc, yaxis_loc : float
+            The locations to draw the x and y axes.  If not specified, they
+            will be drawn from the bottom left of the plot
+        xaxis_arrow, yaxis_arrow : str
+            where to draw arrows on the x/y axes.  Options are '+', '-', '+-', or ''
+        ax_extend : float
+            How far (fractionally) to extend the drawn axes beyond the original
+            axes limits
+        """
+        if len(self._axes)==1:
+            expand_axes=True
+        else:
+            expand_axes=False
+        for ax_id in np.array(axes, ndmin=1):
+            self._axes[axes] = _XKCDify(self._axes[axes],mag,f1,f2,f3,bgcolor,
+            xaxis_loc,yaxis_loc,xaxis_arrow,yaxis_arrow, ax_extend, expand_axes)
+        
     def add_image(self, image, axes=0, interpolation="bicubic", no_axis=True):
 
         self._axes[axes].imshow(image, interpolation="bicubic")
@@ -140,62 +187,3 @@ class Plotting(object):
                             )    
         self._axes[axes].add_artist(ab)
 
-#TODO convert colors to r,g,b before creating set (in case mixed strings and rgb)
-def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=False,
-                        sort_labels=True, colbytes=False, chemlabcols=True, dpi=300, **kwargs):
-    """ create a standalone image of a legend 
-
-    labels : list
-        a list of text labels
-    colors : list
-        a list of colors, as (r,g,b) or names from matplotlib
-    colbytes : bool
-        whether colors are in byte format (1-255) or not (0-1)
-    chemlabcols : bool
-        using color names defined by chemlab, otherwise matplotlib   
-    kwargs
-        additional arguments for legend matplotlib.legend
-    """
-    patches = []
-    names=[]
-    for label,color in set(zip(labels,colors)):
-        if not isinstance(color,basestring) and colbytes:
-            color = [i/255. for i in color]
-        if isinstance(color,basestring) and chemlabcols:
-            color = str_to_colour(color)
-            color = [i/255. for i in color]
-        
-        names.append(label)
-        patches.append(mpl.patches.Patch(color=color))
-    
-    if sort_labels:    
-        patches = [patch for (name,patch) in sorted(zip(names,patches))]
-        names = sorted(names)
-                
-    plot = Plotting(0,0,figsize=(0.1,0.1))
-    plot.figure.legend(patches,names,loc='center',frameon=frameon,ncol=ncol,title=title, **kwargs)
-        
-    return plot.get_image(size,tight_layout=True,dpi=dpi)   
-
-#http://matplotlib.org/examples/api/colorbar_only.html
-def create_colormap_image(vmin,vmax,title='',cmap='jet',ticks=2,length=2, width=0.4,
-                          horizontal=True, size=100, dpi=300):
-
-    norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    if horizontal:
-        plot = Plotting(figsize=(length,width))
-    else:
-        plot = Plotting(figsize=(width,length))
-    # ColorbarBase derives from ScalarMappable and puts a colorbar
-    # in a specified axes, so it has everything needed for a
-    # standalone colorbar.  There are many more kwargs, but the
-    # following gives a basic continuous colorbar with ticks
-    # and labels.
-    orientation = 'horizontal' if horizontal else 'vertical'
-    cb1 = mpl.colorbar.ColorbarBase(plot.axes[0], cmap=cmap,
-                                    norm=norm,
-                                    orientation=orientation)
-    cb1.set_ticks(np.linspace(vmin,vmax,num=ticks))
-    if title:
-        cb1.set_label(title)
-    return plot.get_image(size,tight_layout=True,dpi=dpi)     

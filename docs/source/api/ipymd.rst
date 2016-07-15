@@ -10,6 +10,7 @@ Subpackages
     ipymd.chemlab_patch
     ipymd.data_input
     ipymd.fonts
+    ipymd.plotting
     ipymd.test_data
 
 Submodules
@@ -27,14 +28,6 @@ ipymd.data_output module
 ------------------------
 
 .. automodule:: ipymd.data_output
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-ipymd.plotting module
----------------------
-
-.. automodule:: ipymd.plotting
     :members:
     :undoc-members:
     :show-inheritance:

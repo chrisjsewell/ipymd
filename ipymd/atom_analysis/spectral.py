@@ -274,7 +274,7 @@ def _calc_intensities(atoms_df, rmesh_sphere, wlambda, struct_factors,
 
 def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
                 rspace=[1,1,1], periodic=[True,True,True], manual=False, lp=True):
-    """Compute predicted x-ray diffraction intensities for a given wavelength
+    r"""Compute predicted x-ray diffraction intensities for a given wavelength
     
     Properties
     ----------
@@ -306,6 +306,69 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
         2theta angles for each k-point (degrees)
     intensities : np.array((N,1))
          intensity for each k-point
+    
+    Notes
+    -----
+    This is an implementation of the virtual x-ray diffraction pattern algorithm
+    by Coleman \textit{et al}.[1]_
+    
+    The algorithm proceeds in the following manner:
+
+    1. Define a crystal structure by position (x,y,z) and atom/ion type.
+    2. Define the x-ray wavelength to use
+    3. Compute the full reciprocal lattice mesh
+    4. Filter reciprocal lattice points by those in the Eswald's sphere
+    5. Compute the structure factor at each reciprocal lattice point, for each atom type
+    6. Compute the x-ray diffraction intensity at each reciprocal lattice point
+    7. Group and sum intensities by angle
+
+    The reciprocal k-point modulii are calculated from Bragg's law:    
+    
+    .. math::
+    
+        \left| {\mathbf{K}} \right| = \frac{1}{{d_{\text{hkl}} }} = \frac{2\sin \left( \theta \right)}{\lambda }
+        
+    and are restricted to within the Eswald's sphere, as illustrated:
+        
+    .. image:: images/xrd_mesh.jpg
+    
+    The atomic scattering factors, fj, accounts for the reduction in 
+    diffraction intensity due to Compton scattering, with coefficients based on 
+    the electron density around the atomic nuclei.
+    
+    .. math::
+    
+        f_j \left(\frac{\sin \theta}{\lambda}\right)
+         = \left[ \sum\limits^4_i a_i \exp \left( -b_i \frac{\sin^2 \theta}{\lambda^2} \right)\right] + c 
+         = \left[ \sum\limits^4_i a_i \exp \left( -b_i \left(\frac{\left| {\mathbf{K}} \right|}{2}\right)^2 \right)\right] + c
+    
+    The relative diffraction intensity from x-rays is computed at each 
+    reciprocal lattice point through:
+    
+    .. math::
+    
+        I_x(\mathbf{K}) = Lp(\theta) \frac{F(\mathbf{K})F^*(\mathbf{K})}{N}
+        
+    such that:
+    
+    .. math::
+    
+        F ({\mathbf{K}} )= 
+        \sum\limits_{j = 1}^{N} {f_{j}.e^{\left( {2\pi i \, {\mathbf{K}} \cdot {\mathbf{r}}_{j} } \right)}} 
+        = \sum\limits_{j = 1}^{N} {f_j.\left[ \cos \left( 2\pi \mathbf{K} \cdot \mathbf{r}_j \right) + i \sin \left( 2\pi \mathbf{K} \cdot \mathbf{r}_j \right) \right]}
+
+    and the Lorentz-polarization factor is:
+
+    .. math::
+
+        Lp(\theta) = \frac{1+\cos^2 (2\theta)}{\cos(\theta)\sin^2(\theta)}    
+    
+    References
+    ----------
+    .. [1] 1.Coleman, S. P., Sichani, M. M. & Spearot, D. E. 
+        A Computational Algorithm to Produce Virtual X-ray and Electron Diffraction 
+        Patterns from Atomistic Simulations. JOM 66, 408–416 (2014).
+
 
     """
     min_theta, max_theta = _set_thetas(min2theta,max2theta)
@@ -340,14 +403,14 @@ def plot_xrd_hist(ang2thetas, intensities, bins=180*100, wlambda=None,barwidth=N
     theta_left = theta_edges[:-1]
     zero_mask = I_hist!=0
     
-    plot = plotting.Plotting()
-    plot.axes[0].bar(theta_left[zero_mask],I_hist[zero_mask],bin_width,
+    plot = plotting.Plotter()
+    plot.axes.bar(theta_left[zero_mask],I_hist[zero_mask],bin_width,
                      label=r'$\lambda = {0}$'.format(wlambda))
-    plot.axes[0].set_xlabel(r'Scatteting Angle ($2 \theta$)')
-    plot.axes[0].set_ylabel('Relative Intensity')
-    plot.axes[0].set_yticklabels([])
-    plot.axes[0].grid(True) 
+    plot.axes.set_xlabel(r'Scatteting Angle ($2 \theta$)')
+    plot.axes.set_ylabel('Relative Intensity')
+    plot.axes.set_yticklabels([])
+    plot.axes.grid(True) 
     if wlambda is not None:
-        plot.axes[0].legend(loc='upper right',framealpha=0.5)
+        plot.axes.legend(loc='upper right',framealpha=0.5)
     return plot
     
