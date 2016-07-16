@@ -6,7 +6,7 @@ Created on Fri Jul 15 02:53:47 2016
 """
 import numpy as np
 import matplotlib as mpl
-from chemlab.graphics.colors import get as str_to_colour
+from ..shared.colors import get as str_to_colour
 
 from plotter import Plotter
 

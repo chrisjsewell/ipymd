@@ -11,94 +11,7 @@ from scipy.spatial import ConvexHull
 from matplotlib import cm
 from matplotlib.colors import Normalize
 
-from chemlab.db import ChemlabDB
-#have to convert from nm to angstrom
-vdw_dict = dict((k,v*10) for k,v in ChemlabDB().get("data", 'vdwdict').iteritems())
-
-# Maps
-default_atom_map = {
-    "C": "gray",
-    "O": "red",
-    "H": "white",
-
-    "N": "light_blue",
-    "S": "gold",
-    "Cl": "green",
-    "B": " green",
-    
-    "P": "orange",
-    "Fe": "orange",
-    "Ba": "orange",
-
-    "Na": "blue",
-    "Mg": "forest_green",
-    
-    "Zn": "brown",
-    "Cu": "brown",
-    "Ni": "brown",
-    "Br": "brown",
-
-    "Ca": "dark_gray",
-    "Mn": "dark_gray",
-    "Al": "dark_gray",
-    "Ti": "dark_gray",
-    "Cr": "dark_gray",
-    "Ag": "dark_gray",
-
-    "F": " goldenrod",    
-    "Si": "goldenrod",
-    "Au": "goldenrod",
-    
-    "I": "purple",
-        
-    "Li": "fire_brick",
-    "He": "pink",
-
-    "Xx": "deep_pink",
-}
-
-
-light_atom_map = {
-    "C": "gainsboro",
-    "O": "light_salmon",
-    "H": "snow",
-
-"N": " pale_turquoise",
-    "S": " light_goldenrod_yellow",
-    "Cl": "pale_green",
-    "B": " pale_green",
-    
-"P": "beige",
-    "Fe": "beige",
-    "Ba": "beige",
-
-"Na": "lavender",
-    "Mg": "aquamarine",
-    
-"Zn": "dark_salmon",
-    "Cu": "dark_salmon",
-    "Ni": "dark_salmon",
-    "Br": "dark_salmon",
-
-"Ca": "light_slate_gray",
-    "Mn": "light_slate_gray",
-    "Al": "light_slate_gray",
-    "Ti": "light_slate_gray",
-    "Cr": "light_slate_gray",
-    "Ag": "light_slate_gray",
-
-"F": " pale_goldenrod",    
-    "Si": "pale_goldenrod",
-    "Au": "pale_goldenrod",
-    
-"I": "lavender",
-    
-"Li": "light_coral",
-    "He": "light_pink",
-
-"Xx": "deep_pink",
-}
-
+from .shared import atom_data
 
 class Atom_Manipulation(object):
     """ a class to manipulate atom data
@@ -106,61 +19,88 @@ class Atom_Manipulation(object):
     atom_df : pandas.DataFrame
         containing columns; x, y, z, type
     """
-    def __init__(self, atom_df):
+    def __init__(self, atom_df,undos=1):
         """ a class to manipulate atom data
         
         atom_df : pandas.DataFrame
             containing columns; x, y, z, type
+        undos : int
+            number of past dataframes to save
         """
         assert set(atom_df.columns).issuperset(['x','y','z','type'])
+        assert undos > 0
         
-        self._atom_df_new = atom_df.copy()
-        self._atom_df_old = None
+        self._atom_df = atom_df.copy()
+        #the one on the left is the newest
+        self._old_atom_df = [None]*undos
         self._original_atom_df = atom_df.copy()
 
     @property
     def df(self):
-        return self._atom_df_new.copy()    
+        return self._atom_df.copy() 
     
-    @property
-    def _atom_df(self):
-        return self._atom_df_new   
-
-    #TODO this needs to be improved, too unreliable
-    @_atom_df.setter
-    def _atom_df(self, atom_df):
-        self._atom_df_old = self._atom_df_new
-        self._atom_df_new = atom_df
-    
+    def _save_df(self):
+        self._old_atom_df.pop() # remove the oldest (right)
+        self._old_atom_df.insert(0,self._atom_df.copy()) # add newest left
+        
     def undo_last(self):
-        if self._atom_df_old is not None:
-            self._atom_df_new = self._atom_df_old
-            self._atom_df_old = None
-            
+        if self._old_atom_df[0] is not None:
+               self._atom_df = self._old_atom_df.pop(0) # get newest left
+               self._old_atom_df.append(None)  
+        else:
+            raise Exception('No previous dataframes')
         
     def revert_to_original(self):
         """ revert to original atom_df """
+        self._save_df()
         self._atom_df = self._original_atom_df.copy()
         
     def change_variables(self, map_dict, vtype='type'):
         """ change particular variables according to the map_dict """
+        self._save_df()
         self._atom_df.replace({vtype:map_dict}, inplace=True)
 
     def change_type_variable(self, atom_type, variable, value, type_col='type'):
         """ change particular variable for one atom type """
-        self._atom_df.loc[self._atom_df[type_col]==atom_type, variable] = value
+        self._save_df()
+        if not hasattr(value, '__iter__'):
+            # there is df.loc, df.at or df.set_value, not sure which ones best
+            self._atom_df.set_value(self._atom_df[type_col]==atom_type, variable, value)
+        else:
+            self._atom_df[variable] = self._atom_df[variable].astype(object) 
+            df = self._atom_df
+            # ensure all indexes are unique
+            df.index.name = 'old_index'
+            df.reset_index(drop=False,inplace=True)
+            for indx in df.loc[df[type_col]==atom_type].index:
+                df.set_value(indx,variable,value)
+            self._atom_df = df.set_index('old_index')                
+            
+    def apply_map(self, vmap, column, default=False, type_col='type'):
+        """ change values in a column, according to a mapping of another column
 
-    def apply_colormap(self, colormap=default_atom_map, type_col='type', default_color='grey'):
+        Properties
+        ----------
+        vmap : dict or str
+           A dictionary mapping values, or a string associated with a column in
+           the ipymd.shared.atom_data() dataframe (e.g. color and RVdW)
+        column : str
+            the column to change
+        default : various
+            the default value to put when the type key cannot be found,
+            if False then the original value will not be overwritten
+           
         """
-        colormap : dict
-           A dictionary mapping atom types to colors, in str format 
-           By default it is a default color scheme (light_atom_map also available).   
-        """
+        if isinstance(vmap, basestring):
+            df = atom_data()
+            vmap = df[vmap].dropna().to_dict()
+        
         self._atom_df = self._atom_df.copy()
-        self._atom_df['color'] = default_color
-        for key, val in colormap.iteritems():
-            self.change_type_variable(key, 'color', val, type_col)
-    
+        if default is not False:
+            self._atom_df[column] = default
+        for key, val in vmap.iteritems():
+            self.change_type_variable(key, column, val, type_col)
+        
     def color_by_index(self, cmap='jet', minv=None, maxv=None):
         """change colors to map index values 
         
@@ -176,7 +116,7 @@ class Atom_Manipulation(object):
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
-        self._atom_df = self._atom_df.copy()
+        self._save_df()
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
     def color_by_variable(self, colname, cmap='jet', minv=None, maxv=None):
@@ -196,7 +136,7 @@ class Atom_Manipulation(object):
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
-        self._atom_df = self._atom_df.copy()
+        self._save_df()
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
     def color_by_categories(self, colname, cmap='jet', sort=True):
@@ -221,19 +161,9 @@ class Atom_Manipulation(object):
         
         color_dict = dict([(cat,colormap(i/num_cats,bytes=True)[:3]) for i,cat in enumerate(unique_cats)])
         
-        self._atom_df = self._atom_df.copy()
+        self._save_df()
         self._atom_df.color = cats.map(color_dict)
-        
-    def apply_radiimap(self, radiimap=vdw_dict):
-        """
-        radii_map: dict
-           A dictionary mapping atom types to radii. The default is the
-           mapping contained in `chemlab.db.vdw.vdw_dict`
-        
-        """
-        for key, val in radiimap.iteritems():
-            self.change_type_variable(key, 'radius', val)
-        
+                
     def filter_variables(self, values, vtype='type'):
         if isinstance(values, int):
             values = [values]
@@ -241,6 +171,8 @@ class Atom_Manipulation(object):
             values = [values]
         if isinstance(values, basestring):
             values = [values]
+        
+        self._save_df()
         self._atom_df = self._atom_df[self._atom_df[vtype].isin(values)]        
         
     def _pnts_in_pointcloud(self, points, new_pts):
@@ -263,6 +195,7 @@ class Atom_Manipulation(object):
         points : np.array((N,3))        
         """ 
         inside = self._pnts_in_pointcloud(points, self._atom_df[['x','y','z']].values)
+        self._save_df()
         self._atom_df = self._atom_df[inside]
 
     def filter_inside_box(self, vectors, origin=np.zeros(3)):
@@ -355,22 +288,26 @@ class Atom_Manipulation(object):
                     atom_copy[['x','y','z']] = (atom_copy[['x','y','z']]
                                 + i*vectors[0]  + j*vectors[1] + k*vectors[2])
                     dfs.append(atom_copy)
+        self._save_df()
         self._atom_df = pd.concat(dfs)
         #TODO check for identical atoms and warn
         
     def slice_x(self, minval=None, maxval=None):
+        self._save_df()
         if minval is not None:
             self._atom_df = self._atom_df[self._atom_df['x']>=minval].copy()
         if maxval is not None:
             self._atom_df = self._atom_df[self._atom_df['x']<=maxval].copy()
 
     def slice_y(self, minval=None, maxval=None):
+        self._save_df()
         if minval is not None:
             self._atom_df = self._atom_df[self._atom_df['y']>=minval].copy()
         if maxval is not None:
             self._atom_df = self._atom_df[self._atom_df['y']<=maxval].copy()
 
     def slice_z(self, minval=None, maxval=None):
+        self._save_df()
         if minval is not None:
             self._atom_df = self._atom_df[self._atom_df['z']>=minval].copy()
         if maxval is not None:
@@ -386,7 +323,7 @@ class Atom_Manipulation(object):
         
         """
         x,y,z = vector
-        self._atom_df = self._atom_df.copy()
+        self._save_df()
         self._atom_df.x += x
         self._atom_df.y += y
         self._atom_df.z += z
@@ -403,9 +340,9 @@ class Atom_Manipulation(object):
             vector to rotate around [x0,y0,z0] 
 
         """
-        self._atom_df = self._atom_df.copy()
         xyz = self._atom_df[['x','y','z']].values
         new_xyz = self._rotate(xyz, vector,angle)
+        self._save_df()
         self._atom_df[['x','y','z']] = new_xyz
         
     def group_atoms_as_mols(self, atom_ids, name, remove_atoms=True, mean_xyz=True,
@@ -425,7 +362,6 @@ class Atom_Manipulation(object):
         all_atoms = np.asarray(atom_ids).flatten()  
         assert len(set(all_atoms))==len(all_atoms), 'atoms in multiple molecules'
 
-        df = self._atom_df.copy()
         mol_data = []
         for atoms in atom_ids:
             if mean_xyz:
@@ -440,4 +376,5 @@ class Atom_Manipulation(object):
         if mol_data:
             moldf = pd.DataFrame(mol_data,columns=['type','x','y','z','radius','color','transparency'])
             df = pd.concat([df,moldf])
+        self._save_df()
         self._atom_df = df

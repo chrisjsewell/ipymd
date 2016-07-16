@@ -9,19 +9,19 @@ ASE https://wiki.fysik.dtu.dk/ase/
 Copyright (C) 2010, Jesper Friis
 
 """
-import os
 import numpy as np
 import pandas as pd
 
-from chemlab.core.spacegroup import Spacegroup
-from chemlab.core.spacegroup.cell import cellpar_to_cell
+from ..shared import get_data_path
+from . import spacegroup
+from .spacegroup.spacegroup import Spacegroup
+from .spacegroup.cell import cellpar_to_cell
 
 from .base import DataInput
 
 def get_spacegroup_df():
     """ dataframe of spacegroup mappings """
-    sg_path =  os.path.join(os.path.dirname(os.path.abspath(__file__)), 
-                            'spacegroups.csv')
+    sg_path =  get_data_path('spacegroups.csv',module=spacegroup)
     return pd.read_csv(sg_path, index_col=0)
 
 class Crystal(DataInput):
@@ -82,9 +82,8 @@ class Crystal(DataInput):
         atoms = []
         aid = 1
         
-        # Unit cell parameters, have to convert to nm and back?
         c1,c2,c3,c4,c5,c6 = cellpar 
-        a,b,c = cellpar_to_cell([c1/10.,c2/10.,c3/10.,c4,c5,c6]) * 10.
+        a,b,c = cellpar_to_cell([c1,c2,c3,c4,c5,c6])
         
         self._sim_box = (np.array([a*nx, b*ny, c*nz]),np.array([0.,0.,0.]))
         

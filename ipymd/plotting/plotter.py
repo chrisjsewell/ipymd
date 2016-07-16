@@ -65,21 +65,22 @@ class Plotter(object):
         """
         ipython = get_ipython()
         if ipython is None:
-            raise RuntimeError('not in an ipython shell')
-        current_config = ipython.run_line_magic('config', "InlineBackend.print_figure_kwargs")
-        new_config = current_config.copy()        
-        if tight_layout:
-            new_config['bbox_inches'] = 'tight'
-        else:
-            new_config['bbox_inches'] = None
-
-        ipython.run_line_magic('config', 
-            'InlineBackend.print_figure_kwargs = {0}'.format(new_config))
-        
-        display.display(self._fig)
-
-        ipython.run_line_magic('config', 
-            'InlineBackend.print_figure_kwargs = {0}'.format(current_config))        
+            self._fig.show()
+        else:        
+            current_config = ipython.run_line_magic('config', "InlineBackend.print_figure_kwargs")
+            new_config = current_config.copy()        
+            if tight_layout:
+                new_config['bbox_inches'] = 'tight'
+            else:
+                new_config['bbox_inches'] = None
+    
+            ipython.run_line_magic('config', 
+                'InlineBackend.print_figure_kwargs = {0}'.format(new_config))
+            
+            display.display(self._fig)
+    
+            ipython.run_line_magic('config', 
+                'InlineBackend.print_figure_kwargs = {0}'.format(current_config))        
 
     def get_image(self,size=300,dpi=300, tight_layout=False):
         """return as PIL image

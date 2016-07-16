@@ -9,10 +9,10 @@ from __future__ import division
 import pkgutil
 import math
 import numpy as np
-
-from chemlab.graphics.renderers.base import ShaderBaseRenderer
-from chemlab.graphics .colors import black
 from OpenGL.GL import *
+
+from .base import ShaderBaseRenderer
+from ....shared.colors import black
 
 class HexagonRenderer(ShaderBaseRenderer):
     '''Used to render one wireframed hexagonal prism.
@@ -33,9 +33,9 @@ class HexagonRenderer(ShaderBaseRenderer):
     '''
 
     def __init__(self, widget, vectors, origin=np.zeros(3), color=black, width=1.5):
-        vert = pkgutil.get_data("chemlab.graphics.renderers.shaders",
+        vert = pkgutil.get_data("ipymd.visualise.opengl.renderers.opengl_shaders",
                                 "default_persp.vert")
-        frag = pkgutil.get_data("chemlab.graphics.renderers.shaders",
+        frag = pkgutil.get_data("ipymd.visualise.opengl.renderers.opengl_shaders",
                                 "no_light.frag")
 
         self.color = color

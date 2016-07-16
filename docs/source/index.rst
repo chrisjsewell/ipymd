@@ -50,6 +50,7 @@ Contents
 License
 -------
 
+ipymd is released under the GNU GPL3 or GNU LGPL license, if the PyQt parts are omitted (in ipymd.visualise.opengl) and the ipymd.data_input.spacegroup package is omitted,
 ipyMD is released under the `GNU GPLv3
 <http://www.gnu.org/licenses/gpl.html>`_ and its main developer is
 Chris Sewell.

@@ -1,26 +1,16 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May 16 09:55:43 2016
+'''TriangleRenderer is the basics for other shapes, we pass just
+triangle vertices and we got the result.
 
-@author: cjs14
-
-
-added patch to allow for transparent surface
-"""
+'''
 import numpy as np
 
-# CJS changed relative paths to chemlab ones
-from chemlab.graphics.renderers.base import DefaultRenderer
-from chemlab.graphics.buffers import VertexBuffer
-from chemlab.graphics.shaders import set_uniform
+from .base import DefaultRenderer
+from ..buffers import VertexBuffer
+from ..shaders import set_uniform
 
 from OpenGL.GL import (GL_DYNAMIC_DRAW, GL_VERTEX_ARRAY, GL_NORMAL_ARRAY,
                        GL_COLOR_ARRAY, GL_UNSIGNED_BYTE, GL_FLOAT, GL_TRIANGLES,
-                       glEnableClientState, glDrawArrays, 
-                       glEnable, glDisable, GL_BLEND, glBlendFunc, 
-                       GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, glDepthMask, 
-                       GL_TRUE, GL_FALSE,
-                       glPolygonMode, GL_FRONT_AND_BACK, GL_FILL, GL_LINE)
+                       glEnableClientState, glDrawArrays)
 
 class TriangleRenderer(DefaultRenderer):
     '''Renders an array of triangles.
@@ -48,8 +38,7 @@ class TriangleRenderer(DefaultRenderer):
         in the interval [0, 255]
     
     '''
-    def __init__(self, widget, vertices, normals, colors, shading='phong', 
-                 transparent=False, wireframe=False):
+    def __init__(self, widget, vertices, normals, colors, shading='phong'):
         super(TriangleRenderer, self).__init__(widget)
         
         n_triangles = len(vertices)
@@ -60,8 +49,6 @@ class TriangleRenderer(DefaultRenderer):
         colors = np.array(colors, dtype=np.uint8)
         
         self.shading = shading
-        self.transparent = transparent
-        self.wireframe = wireframe
         
         # Store vertices, colors and normals in 3 different vertex
         # buffer objects
@@ -81,13 +68,6 @@ class TriangleRenderer(DefaultRenderer):
         
     def draw_vertices(self):
         # Draw all the vbo defined in set_atoms
-        if self.transparent:
-            glEnable(GL_BLEND)
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            glDepthMask(GL_FALSE)
-        if self.wireframe:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-
         glEnableClientState(GL_VERTEX_ARRAY)
         self._vbo_v.bind_vertexes(3, GL_FLOAT)
         
@@ -102,14 +82,7 @@ class TriangleRenderer(DefaultRenderer):
         self._vbo_v.unbind()
         self._vbo_n.unbind()
         self._vbo_c.unbind()
-
-        if self.transparent:
-            glDisable(GL_BLEND)
-            #glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-            glDepthMask(GL_TRUE)
-        if self.wireframe:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-
+    
     def update_vertices(self, vertices):
         """
         Update the triangle vertices.

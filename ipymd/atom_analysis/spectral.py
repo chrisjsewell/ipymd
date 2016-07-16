@@ -45,9 +45,7 @@ import math
 import numpy as np
 import pandas as pd
 
-import os
-import inspect
-
+from ..shared import get_data_path
 from . import data
 from . import basic
 from .. import plotting
@@ -186,8 +184,8 @@ def _restrict_rmesh(rmesh, wlambda, min_theta, max_theta):
     return rmesh[radius_mask][angle_mask], K[angle_mask], theta[angle_mask]
 
 def _get_sf_coeffs():
-    basepath = os.path.dirname(os.path.abspath(inspect.getfile(data)))
-    datapath = os.path.join(basepath, 'xray_scattering_factors_coefficients.csv')
+    datapath = get_data_path('xray_scattering_factors_coefficients.csv',
+                             module=data)
     return pd.read_csv(datapath, index_col=0,comment='#')
 
 def _calc_struct_factors(atoms_df,rmesh_sphere,wlambda,k_mods):

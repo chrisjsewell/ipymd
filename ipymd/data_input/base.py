@@ -5,7 +5,7 @@ Created on Sun May  1 22:49:20 2016
 @author: cjs14
 """
 import itertools
-from .. import _colors
+from ..shared import colors
 
 class DataInput(object):
     """
@@ -41,10 +41,10 @@ class DataInput(object):
 
         atom_df['transparency'] = 1.
         
-        col_keys = _colors.col_dict.keys()
+        col_keys = colors.col_dict.keys()
         col_cycle = itertools.cycle(col_keys)
         for typ in atom_df['type'].unique():            
-            atom_df.loc[atom_df['type']==typ,'color'] = _colors.col_dict[col_cycle.next()][0]
+            atom_df.loc[atom_df['type']==typ,'color'] = colors.col_dict[col_cycle.next()][0]
         
     def _skiplines(self, f, num=1):
         """ skip line(s) in an open file """

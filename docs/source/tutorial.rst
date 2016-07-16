@@ -11,7 +11,7 @@ In the IPython Notebook, the ipymd package must first be imported:
 
 .. parsed-literal::
 
-    0.3.0
+    0.4.0
 
 
 Basic Atom Creation and Visualisation
@@ -59,7 +59,7 @@ which is returned in the form of a ``PIL`` image.
 
 .. parsed-literal::
 
-    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x118EF3B90>
+    <PIL.Image._ImageCrop image mode=RGBA size=134x54 at 0x11863FB48>
 
 
 
@@ -452,10 +452,10 @@ altering the geometry, as shown in this example:
     
     manipulate_atoms = ipymd.atom_manipulation.Atom_Manipulation
     
-    new_df = manipulate_atoms(data.get_atom_data())
+    new_df = manipulate_atoms(data.get_atom_data(),undos=2)
     
-    new_df.apply_radiimap({'Na':1.5, 'Cl':1})
-    new_df.apply_colormap({'Na':'blue','Cl':'green'})
+    new_df.apply_map({'Na':1.5, 'Cl':1},'radius')
+    new_df.apply_map('color','color',default='grey')
     new_df.change_type_variable('Na', 'transparency', 0.5)
     new_df.slice_z(10,20)
     
@@ -484,14 +484,90 @@ altering the geometry, as shown in this example:
 
 
 
-NB: the default radii map is by atom Van der Waals radii
-(``ipymd.atom_manipulation.vdw_dict``) and the default color map is by
-the same as in chemlab (``ipymd.atom_manipulation.default_atom_map``).
+NB: default atom variables (such as color and radii can be set using the
+``apply_map`` method and any column name from those given in
+``ipymd.shared.atom_data()``:
+
+.. code:: python
+
+    ipymd.shared.atom_data().head(1)
+
+
+
+
+.. raw:: html
+
+    <div>
+    <table border="1" class="dataframe">
+      <thead>
+        <tr style="text-align: right;">
+          <th></th>
+          <th>Num</th>
+          <th>ARENeg</th>
+          <th>RCov</th>
+          <th>RBO</th>
+          <th>RVdW</th>
+          <th>MaxBnd</th>
+          <th>Mass</th>
+          <th>ElNeg</th>
+          <th>Ionization</th>
+          <th>ElAffinity</th>
+          <th>Name</th>
+          <th>color_chemlab</th>
+          <th>color_chemlab_light</th>
+          <th>color</th>
+        </tr>
+        <tr>
+          <th>Symb</th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <th>H</th>
+          <td>1</td>
+          <td>2.2</td>
+          <td>0.31</td>
+          <td>0.31</td>
+          <td>1.1</td>
+          <td>1</td>
+          <td>1.00794</td>
+          <td>2.2</td>
+          <td>13.5984</td>
+          <td>0.754204</td>
+          <td>Hydrogen</td>
+          <td>white</td>
+          <td>snow</td>
+          <td>(191, 191, 191)</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+
 
 Geometric Analysis
 ~~~~~~~~~~~~~~~~~~
 
-Given the simple and flexible form of the atomic data and visualisation, it is now easier to add more comp`lex geometric analysis. These analyses are being contained in the ``atom_analysis` package, and some initial examples are detailed below. Functions in the ``atom_analysis.nearest_neighbour`` package are based on the ``scipy.spatial.cKDTree`` algorithm for identifying nearest neighbours.
+Given the simple and flexible form of the atomic data and visualisation,
+it is now easier to add more complex geometric analysis. These analyses
+are being contained in the ``atom_analysis`` package, and some initial
+examples are detailed below. Functions in the
+``atom_analysis.nearest_neighbour`` package are based on the
+``scipy.spatial.cKDTree`` algorithm for identifying nearest neighbours.
 
 Atomic Coordination
 ^^^^^^^^^^^^^^^^^^^
@@ -531,7 +607,7 @@ Cl lattice in each direction before computation.
 
 
 
-.. image:: images/output_45_0.png
+.. image:: images/output_46_0.png
 
 
 
@@ -564,7 +640,7 @@ Cl lattice in each direction before computation.
 
 
 
-.. image:: images/output_46_0.png
+.. image:: images/output_47_0.png
 
 
 
@@ -779,7 +855,7 @@ unknown structure:
 
 
 
-.. image:: images/output_57_0.png
+.. image:: images/output_58_0.png
 
 
 A visualisation of the probable local character of each atom can also be
@@ -815,7 +891,7 @@ allows for more robust fitting to the ideal signatures:
 
 
 
-.. image:: images/output_59_0.png
+.. image:: images/output_60_0.png
 
 
 
@@ -842,7 +918,7 @@ within a specified distance:
 
 
 
-.. image:: images/output_62_0.png
+.. image:: images/output_63_0.png
 
 
 
@@ -870,7 +946,7 @@ algorithm, from http://http://dx.doi.org/10.1007/s11837-013-0829-3.
 
 
 
-.. image:: images/output_65_0.png
+.. image:: images/output_66_0.png
 
 
 The predicted spectrum peaks (for alpha-Fe) shows good correlation with
@@ -886,7 +962,7 @@ experimentally derived data:
 
 
 
-.. image:: images/output_67_0.png
+.. image:: images/output_68_0.png
 
 
 
@@ -1016,4 +1092,5 @@ timestep.
 
 
 
-.. image:: images/output_72_0.png
+.. image:: images/output_73_0.png
+

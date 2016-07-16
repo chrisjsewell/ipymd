@@ -1,6 +1,13 @@
 ipymd.data_input package
 ========================
 
+Subpackages
+-----------
+
+.. toctree::
+
+    ipymd.data_input.spacegroup
+
 Submodules
 ----------
 

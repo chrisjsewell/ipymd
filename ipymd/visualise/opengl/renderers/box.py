@@ -10,11 +10,10 @@ added patch to allow for line width selection
 from __future__ import division
 import pkgutil
 import numpy as np
-
-# CJS changed relative paths to chemlab ones
-from chemlab.graphics.renderers.base import ShaderBaseRenderer
-from chemlab.graphics .colors import black
 from OpenGL.GL import *
+
+from .base import ShaderBaseRenderer
+from ....shared.colors import black
 
 class BoxRenderer(ShaderBaseRenderer):
     '''Used to render one wireframed box.
@@ -35,9 +34,9 @@ class BoxRenderer(ShaderBaseRenderer):
     '''
 
     def __init__(self, widget, vectors, origin=np.zeros(3), color=black, width=1.5):
-        vert = pkgutil.get_data("chemlab.graphics.renderers.shaders",
+        vert = pkgutil.get_data("ipymd.visualise.opengl.renderers.opengl_shaders",
                                 "default_persp.vert")
-        frag = pkgutil.get_data("chemlab.graphics.renderers.shaders",
+        frag = pkgutil.get_data("ipymd.visualise.opengl.renderers.opengl_shaders",
                                 "no_light.frag")
 
         self.color = color

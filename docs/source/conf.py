@@ -35,17 +35,7 @@ class Mock(object):
     def __mul__(self, other):
         return Mock()
 
-MOCK_MODULES = ['cclib', 'cclib.parser', 'cclib.parser.utils', 
-'chemlab', 'chemlab.graphics', 'chemlab.db', 'chemlab.graphics.renderers',
-'chemlab.graphics.renderers.base','chemlab.graphics.renderers.sphere',
-'chemlab.graphics.renderers.sphere_imp','chemlab.graphics.renderers.point',
-'chemlab.graphics.colors', 'chemlab.graphics.buffers', 'chemlab.core',
-'chemlab.io', 'chemlab.io.handlers', 'chemlab.graphics.qtviewer',
-'chemlab.graphics.buffers', 'chemlab.graphics.shaders', 'chemlab.io.handlers.base', 'chemlab.core.spacegroup','chemlab.core.spacegroup.cell',
-'chemlab.graphics.transformations','chemlab.graphics.camera', 'chemlab.graphics.renderers.wireframe',
-'chemlab.graphics.renderers.line',
-'chemlab.utils', 'chemlab.qc', 'chemlab.qc.pgbf',
-'chemview', 'chemview.widget', 'chemview.utils', 'chemview.marchingcubes',
+MOCK_MODULES = [
 'paramiko', 'numpy', 'numpy.linalg',
 'OpenGL', 'OpenGL.GL',
 'matplotlib', 'matplotlib.pyplot', 'matplotlib.cm', 'matplotlib.offsetbox','matplotlib.font_manager',

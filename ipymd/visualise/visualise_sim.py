@@ -5,41 +5,22 @@ Created on Sun May  1 23:47:03 2016
 @author: cjs14
 """
 from io import BytesIO
-
 import numpy as np
-
-from chemlab.graphics.qtviewer import QtViewer
-from chemlab.graphics.renderers.line import LineRenderer
-#from chemlab.graphics.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
-#                                             OutlineEffect, SSAOEffect)
-from chemlab.graphics.colors import get as str_to_colour
-from chemlab.graphics.transformations import rotation_matrix
-def orbit_z(self, angle):
-    # Subtract pivot point
-    self.position -= self.pivot        
-    # Rotate
-    rot = rotation_matrix(-angle, self.c)[:3,:3]
-    self.position = np.dot(rot, self.position)        
-    # Add again the pivot point
-    self.position += self.pivot
-    
-    self.a = np.dot(rot, self.a)
-    self.b = np.dot(rot, self.b)
-    self.c = np.dot(rot, self.c)     
-from chemlab.graphics.camera import Camera
-Camera.orbit_z = orbit_z
 
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops, ImageDraw, ImageFont
 
-# in order to set atoms as transparent
-from .chemlab_patch.atom import AtomRenderer
-from .chemlab_patch.triangle import TriangleRenderer
-from .chemlab_patch.box import BoxRenderer
-from .chemlab_patch.hexagon import HexagonRenderer
-
-from .. import fonts
-from .._get_data_path import get_data_path
+from ..shared.colors import get as str_to_colour
+from ..shared import fonts
+from ..shared import get_data_path
+from .opengl.qtviewer import QtViewer
+from .opengl.renderers.line import LineRenderer
+from .opengl.renderers.atom import AtomRenderer
+from .opengl.renderers.triangle import TriangleRenderer
+from .opengl.renderers.box import BoxRenderer
+from .opengl.renderers.hexagon import HexagonRenderer
+#from .opengl.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
+#                                             OutlineEffect, SSAOEffect)
 
 class Visualise_Sim(object):
     """ 
@@ -306,7 +287,6 @@ class Visualise_Sim(object):
         
         return final_img        
         
-    #TODO add truefonts
     def create_textline_image(self, text, fontsize=10, color=(0,0,0),background=(255,255,255),
                               boxsize=(1000,20)):
         """create a PIL image from a line of text"""

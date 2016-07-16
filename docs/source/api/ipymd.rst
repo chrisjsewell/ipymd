@@ -7,11 +7,11 @@ Subpackages
 .. toctree::
 
     ipymd.atom_analysis
-    ipymd.chemlab_patch
     ipymd.data_input
-    ipymd.fonts
     ipymd.plotting
+    ipymd.shared
     ipymd.test_data
+    ipymd.visualise
 
 Submodules
 ----------
@@ -28,14 +28,6 @@ ipymd.data_output module
 ------------------------
 
 .. automodule:: ipymd.data_output
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-ipymd.visualise_sim module
---------------------------
-
-.. automodule:: ipymd.visualise_sim
     :members:
     :undoc-members:
     :show-inheritance:

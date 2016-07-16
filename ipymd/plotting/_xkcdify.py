@@ -16,8 +16,8 @@ import matplotlib.pyplot as plt
 from scipy import interpolate, signal
 import matplotlib.font_manager as fm
 
-from .. import fonts
-from .._get_data_path import get_data_path
+from ..shared import fonts
+from ..shared import get_data_path
 
     
 def _xkcd_line(x, y, xlim=None, ylim=None,

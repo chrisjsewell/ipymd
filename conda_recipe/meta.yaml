@@ -1,13 +1,13 @@
 source:
   git_url: https://github.com/chrisjsewell/ipymd.git
-  git_tag: v0.3.0
+  git_tag: v0.4.0
 #  patches:
    # List any patch files here
    # - fix.patch
 
 package:
   name: ipymd
-  version: 0.3.0
+  version: 0.4.0
 
 # build:
   # preserve_egg_dir: True
@@ -34,7 +34,6 @@ requirements:
     - ipython
     - pil
     - pyopengl 3.0.2 py27_0
-    - chemlab
     - pyqt 4.11.4 py27_1
     - qt 4.8.7 1
 
@@ -49,7 +48,6 @@ requirements:
     - ipython-notebook
     - pil
     - pyopengl 3.0.2 py27_0
-    - chemlab
     - pyqt 4.11.4 py27_1
     - qt 4.8.7 1
 
@@ -57,15 +55,13 @@ test:
   # Python imports
   imports:
     - ipymd
-    - ipymd.chemlab_patch
     - ipymd.data_input
     - ipymd.atom_analysis
     - ipymd.atom_manipulation
     - ipymd.data_output
     - ipymd.test_data
-    - ipymd.test_data.atom_dump
-    - ipymd.fonts
     - ipymd.plotting
+    - ipymd.visualise
 
   # commands:
     # You can put test commands to be run here.  Use this to test that the

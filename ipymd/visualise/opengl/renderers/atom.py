@@ -11,10 +11,10 @@ added patch to allow for transparent atoms when using 'impostors' backend
 import numpy as np
 
 # CJS changed relative paths to chemlab ones
-from chemlab.graphics.renderers.base import AbstractRenderer
-from chemlab.graphics.renderers.sphere import SphereRenderer
-from chemlab.graphics.renderers.sphere_imp import SphereImpostorRenderer
-from chemlab.graphics.renderers.point import PointRenderer
+from .base import AbstractRenderer
+from .sphere import SphereRenderer
+from .sphere_imp import SphereImpostorRenderer
+from .point import PointRenderer
 
 class AtomRenderer(AbstractRenderer):
     """Render atoms by using different rendering methods.

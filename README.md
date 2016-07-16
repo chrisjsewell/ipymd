@@ -40,8 +40,11 @@ In the IPython Notebook, the ipymd package can then be imported.
 
 ```python
 import ipymd
-print ipymd.version()
 ```
 
-    0.3.0
+License
+-------
+
+ipymd is released under the GNU GPL3 or GNU LGPL license if the PyQt parts are omitted (in ipymd.visualise.opengl) and the ipymd.data_input.spacegroup package is omitted as well. See license_lgpl.txt and license_gpl.txt files attached.
+
 

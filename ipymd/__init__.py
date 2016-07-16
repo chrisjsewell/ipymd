@@ -11,8 +11,9 @@ from .visualise import visualise_sim
 from . import atom_manipulation
 from . import atom_analysis
 from . import plotting 
-from ._colors import available_colors
-from ._get_data_path import get_data_path 
+from . import shared
+from .shared.colors import available_colors
+from .shared import get_data_path 
 
 from ._version import __version__
 
