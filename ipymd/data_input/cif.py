@@ -240,7 +240,7 @@ class CIF(DataInput):
         fX = [ float(s) for s in data['_atom_site_fract_x'] ]
         fY = [ float(s) for s in data['_atom_site_fract_y'] ]
         fZ = [ float(s) for s in data['_atom_site_fract_z'] ]
-        if data.has_key('_atom_site_occupancy'):
+        if '_atom_site_occupancy' in data:
             occ = [ float(s) for s in data['_atom_site_occupancy'] ]
         else:
             occ = [ 1.0 for _ in data['_atom_site_label'] ]

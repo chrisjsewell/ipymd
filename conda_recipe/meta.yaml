@@ -1,13 +1,13 @@
 source:
   git_url: https://github.com/chrisjsewell/ipymd.git
-  git_tag: v0.4.0
+  git_tag: v0.4.1
 #  patches:
    # List any patch files here
    # - fix.patch
 
 package:
   name: ipymd
-  version: 0.4.0
+  version: 0.4.1
 
 # build:
   # preserve_egg_dir: True
@@ -27,29 +27,31 @@ package:
 requirements:
   build:
     - python 2.7.11 0
-    - numpy 1.9.3 py27_1
-    - scipy
-    - matplotlib
-    - pandas
-    - ipython
-    - pil
-    - pyopengl 3.0.2 py27_0
-    - pyqt 4.11.4 py27_1
-    - qt 4.8.7 1
-
-
-  run:
-    - python 2.7.11 0
-    - numpy 1.9.3 py27_1
+    - six
+    - numpy
     - scipy
     - matplotlib
     - pandas
     - ipython
     - ipython-notebook
-    - pil
-    - pyopengl 3.0.2 py27_0
-    - pyqt 4.11.4 py27_1
-    - qt 4.8.7 1
+    - pillow
+    - pyopengl
+    - pyqt
+    - qt
+
+  run:
+    - python 2.7.11 0
+    - six
+    - numpy
+    - scipy
+    - matplotlib
+    - pandas
+    - ipython
+    - ipython-notebook
+    - pillow
+    - pyopengl
+    - pyqt
+    - qt
 
 test:
   # Python imports

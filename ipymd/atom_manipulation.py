@@ -10,6 +10,7 @@ import numpy as np
 from scipy.spatial import ConvexHull
 from matplotlib import cm
 from matplotlib.colors import Normalize
+from six import string_types
 
 from .shared import atom_data
 
@@ -91,7 +92,7 @@ class Atom_Manipulation(object):
             if False then the original value will not be overwritten
            
         """
-        if isinstance(vmap, basestring):
+        if isinstance(vmap, string_types):
             df = atom_data()
             vmap = df[vmap].dropna().to_dict()
         
@@ -169,7 +170,7 @@ class Atom_Manipulation(object):
             values = [values]
         if isinstance(values, float):
             values = [values]
-        if isinstance(values, basestring):
+        if isinstance(values, string_types):
             values = [values]
         
         self._save_df()

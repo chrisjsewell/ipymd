@@ -6,6 +6,7 @@ Created on Sun May  1 23:47:03 2016
 """
 from io import BytesIO
 import numpy as np
+from six import string_types
 
 from IPython.display import Image as ipy_Image
 from PIL import Image, ImageChops, ImageDraw, ImageFont
@@ -92,7 +93,7 @@ class Visualise_Sim(object):
         radii = self._unit_conversion(radii, 'distance')
         
         cols = atoms_df['color'].apply(
-                lambda x: str_to_colour(x) if isinstance(x,basestring) else list(x) + [255]).tolist()
+                lambda x: str_to_colour(x) if isinstance(x,string_types) else list(x) + [255]).tolist()
         if None in cols:
             raise ValueError('one or more colors not found')
         cols = np.array(cols)
@@ -213,9 +214,9 @@ class Visualise_Sim(object):
         values : np.array 
         measure : str       
         """
-        if not self._unit_dict.has_key(self._units):
+        if not self._units in self._unit_dict:
             raise NotImplementedError
-        if not self._unit_dict[self._units].has_key(measure):
+        if not measure in self._unit_dict[self._units]:
             raise NotImplementedError
 
         return values * self._unit_dict[self._units][measure]

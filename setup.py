@@ -70,13 +70,16 @@ setup(name='ipymd',
                     'ipymd.visualise.opengl.renderers.opengl_shaders' : ['*.frag','*.vert'],
                     },
       install_requires=[
+                          "python=2.7.11=0",
                           "numpy",
                           "scipy",
                           "matplotlib",
                           "pandas",
                           "ipython",
                           "ipython-notebook",
-                          "pil",
-                          "pyopengl==3.0.2",
+                          "pillow",
+                          "pyopengl",
+                          "pyqt",
+                          "six"
                        ],               
      )

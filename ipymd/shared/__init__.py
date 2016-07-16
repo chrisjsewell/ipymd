@@ -3,6 +3,7 @@
 import os
 import inspect
 import pandas as pd
+from six import string_types
 
 from .. import test_data
 from . import atomdata
@@ -15,7 +16,7 @@ def get_data_path(data, check_exists=False, module=test_data):
     """
     basepath = os.path.dirname(os.path.abspath(inspect.getfile(module)))
     
-    if isinstance(data, basestring): data = [data]
+    if isinstance(data, string_types): data = [data]
     
     dirpath = os.path.join(basepath, *data)
     

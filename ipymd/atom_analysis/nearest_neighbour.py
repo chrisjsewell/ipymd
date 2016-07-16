@@ -35,7 +35,7 @@ def _longest_path(start,tree,lastnode=None):
      -> [0, 1, 2, 3, 0]
     
     """
-    if not tree.has_key(start):
+    if not start in tree:
         return []
     new_tree = tree.copy()
     #nodes = new_tree.pop(start) # can use if don't want to complete loops
@@ -520,7 +520,7 @@ def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
          '5,4,3':['grey','Diamond (1 of 2)'],
          '6,6,3':['grey','Diamond (1 of 2)']}
     for label in labels:
-        if d.has_key(label):
+        if label in d:
             colors.append(d[label][0])
             patches.append(mpatches.Patch(color=d[label][0], label=d[label][1]))
         else:
@@ -574,7 +574,7 @@ def _group_molecules(atom_df,moltypes,maxdist=3,repeat_vectors=None,
                 #used_repeat.append(rep_map[j])
                 mol.append(j)
             else:
-                print 'warning incomplete molecule'#, idnum, dist, j, rep_map.get(j)
+                print('warning incomplete molecule')#, idnum, dist, j, rep_map.get(j)
         
         repeat_mol = [rep_map[m] for m in mol]
         if len(mol) == len(moltypes):

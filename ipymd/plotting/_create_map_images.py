@@ -6,9 +6,10 @@ Created on Fri Jul 15 02:53:47 2016
 """
 import numpy as np
 import matplotlib as mpl
+from six import string_types
 from ..shared.colors import get as str_to_colour
 
-from plotter import Plotter
+from .plotter import Plotter
 
 #TODO convert colors to r,g,b before creating set (in case mixed strings and rgb)
 def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=False,
@@ -29,9 +30,9 @@ def create_legend_image(labels, colors, size=100, ncol=1, title=None, frameon=Fa
     patches = []
     names=[]
     for label,color in set(zip(labels,colors)):
-        if not isinstance(color,basestring) and colbytes:
+        if not isinstance(color,string_types) and colbytes:
             color = [i/255. for i in color]
-        if isinstance(color,basestring) and chemlabcols:
+        if isinstance(color,string_types) and chemlabcols:
             color = str_to_colour(color)
             color = [i/255. for i in color]
         
