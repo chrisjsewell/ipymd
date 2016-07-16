@@ -35,7 +35,7 @@ df = pd.DataFrame(
 
 # In[3]:
 
-print ipymd.available_colors()['reds']
+print(ipymd.available_colors()['reds'])
 
 
 # The `Visualise_Sim` class can then be used to setup a visualisation, which is returned in the form of a `PIL` image.
@@ -100,8 +100,8 @@ data = ipymd.data_input.crystal.Crystal(
     repetitions=[5, 5, 5])
 
 sim_abc, sim_origin = data.get_simulation_box()
-print sim_origin
-print sim_abc
+print(sim_origin)
+print(sim_abc)
 atoms_df = data.get_atom_data()
 atoms_df.head(2)
 
@@ -175,7 +175,7 @@ vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
 
 lammps_path = ipymd.get_data_path(['atom_dump','atoms_*.dump'])
 data = ipymd.data_input.lammps.LAMMPS_Output(lammps_path)
-print data.count_timesteps()
+print(data.count_timesteps())
 
 vis = ipymd.visualise_sim.Visualise_Sim()
 vis.basic_vis(data.get_atom_data(98), data.get_simulation_box(98),
@@ -302,8 +302,8 @@ data1 = ipymd.data_input.crystal.Crystal(
     repetitions=[5, 5, 5])
 df1 = data1.get_atom_data()
 
-print ('Average distance to nearest atom (identical)', 
-       np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df1)))
+print(('Average distance to nearest atom (identical)', 
+       np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df1))))
 
 data2 = ipymd.data_input.crystal.Crystal(
     [[0.0, 0.0, 0.0], [0.5, 0.5, 0.5]], ['Na', 'Cl'], 
@@ -311,8 +311,8 @@ data2 = ipymd.data_input.crystal.Crystal(
     repetitions=[5, 5, 5])
 df2 = data2.get_atom_data()
 
-print ('Average distance to nearest atom (different)', 
-       np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df2)))
+print(('Average distance to nearest atom (different)', 
+       np.mean(ipymd.atom_analysis.nearest_neighbour.compare_to_lattice(df1,df2))))
 
 
 # #### Common Neighbour Analysis (CNA)
@@ -361,10 +361,10 @@ diamond_df = data.get_atom_data()
 
 # In[22]:
 
-print ipymd.atom_analysis.nearest_neighbour.cna_sum(fcc_df,repeat_vectors=fcc_vector)
-print ipymd.atom_analysis.nearest_neighbour.cna_sum(hcp_df,repeat_vectors=hcp_vector)
-print ipymd.atom_analysis.nearest_neighbour.cna_sum(bcc_df,repeat_vectors=bcc_vector)
-print ipymd.atom_analysis.nearest_neighbour.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector)
+print(ipymd.atom_analysis.nearest_neighbour.cna_sum(fcc_df,repeat_vectors=fcc_vector))
+print(ipymd.atom_analysis.nearest_neighbour.cna_sum(hcp_df,repeat_vectors=hcp_vector))
+print(ipymd.atom_analysis.nearest_neighbour.cna_sum(bcc_df,repeat_vectors=bcc_vector))
+print(ipymd.atom_analysis.nearest_neighbour.cna_sum(diamond_df,upper_bound=10,max_neighbours=16,repeat_vectors=diamond_vector))
 
 
 # For each atom, the CNA for each nearest-neighbour can be output:
@@ -487,5 +487,4 @@ ax = sys_data.plot('time','temp')
 ax.set_xlabel('Time (fs)')
 ax.set_ylabel('Temperature (K)');
 ax.grid()
-
 
