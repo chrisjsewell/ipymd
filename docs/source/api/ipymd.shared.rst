@@ -6,7 +6,7 @@ Subpackages
 
 .. toctree::
 
-    ipymd.shared.data
+    ipymd.shared.atomdata
     ipymd.shared.fonts
 
 Submodules

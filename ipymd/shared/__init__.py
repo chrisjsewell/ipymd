@@ -5,7 +5,7 @@ import inspect
 import pandas as pd
 
 from .. import test_data
-from . import data
+from . import atomdata
 
 def get_data_path(data, check_exists=False, module=test_data):
     """return a directory path to data within a module
@@ -27,7 +27,7 @@ def get_data_path(data, check_exists=False, module=test_data):
 def atom_data():
     """return a dataframe of atomic data
     """
-    path = get_data_path('element.txt',module=data)
+    path = get_data_path('element.txt',module=atomdata)
     df = pd.read_csv(path,comment='#')
     df.set_index('Symb',inplace=True)
     
