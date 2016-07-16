@@ -37,7 +37,8 @@ class Mock(object):
 
 MOCK_MODULES = [
 'paramiko', 'numpy', 'numpy.linalg',
-'OpenGL', 'OpenGL.GL',
+'OpenGL', 'OpenGL.GL', 'OpenGL.raw','OpenGL.arrays','OpenGL.GL.framebufferobjects',
+'PyQt4','PyQt4.QtCore','PyQt4.QtOpenGL','PyQt4.QtGui',
 'matplotlib', 'matplotlib.pyplot', 'matplotlib.cm', 'matplotlib.offsetbox','matplotlib.font_manager',
 'matplotlib.colors', 'mpl_toolkits', 'mpl_toolkits.mplot3d','matplotlib.patches',
 'pandas', 'pandas.tools', 'pandas.tools.plotting', 'pandas.core', 'pandas.core.index',
@@ -45,6 +46,7 @@ MOCK_MODULES = [
 'IPython', 'IPython.display', 'IPython.core', 'IPython.core.display',
 'IPython.utils', 'IPython.utils.traitlets',
 'scipy', 'scipy.signal', 'scipy.interpolate','scipy.spatial',
+'PIL',
 'nose', 'nose_parameterized',
 ]
 for mod_name in MOCK_MODULES:
