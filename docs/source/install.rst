@@ -13,6 +13,12 @@ Python environment within which to use ipymd:
     source activate ipymd
     ipython notebook
 
-Currently the conda package is only available for OSX. For other operating systems, see the conda build file for guidance on package dependancies: https://github.com/chrisjsewell/ipymd/blob/master/conda_recipe/meta.yaml
+Currently the conda package is only available for OSX. For other operating systems, 
+or to use the latest version from Github, the following environment should work:
 
-A full specification of a working environment is also listed at: https://github.com/chrisjsewell/ipymd/blob/master/working_dependencies_list_osx.txt
+::
+
+    conda create -n ipymd python=2.7.11=0 numpy scipy matplotlib pandas ipython ipython-notebook pillow pyopengl pyqt six
+
+If there are any issues, see the known working package dependancies list: 
+https://github.com/chrisjsewell/ipymd/blob/master/working_dependencies_list_osx.txt 

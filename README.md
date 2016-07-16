@@ -34,7 +34,13 @@ It builds primarily on the [chemlab](http://chemlab.readthedocs.io/en/latest/) p
     source activate ipymd
     ipython notebook
 
-Currently the conda package is only available for OSX. For other operating systems, see the conda build file for guidance on package dependancies: https://github.com/chrisjsewell/ipymd/blob/master/conda_recipe/meta.yaml
+Currently the conda package is only available for OSX. For other operating systems, 
+or to use the latest version from Github, the following environment should work:
+
+    conda create -n ipymd python=2.7.11=0 numpy scipy matplotlib pandas ipython ipython-notebook pillow pyopengl pyqt six
+
+If there are any issues, see the known working package dependancies list: 
+https://github.com/chrisjsewell/ipymd/blob/master/working_dependencies_list_osx.txt 
 
 In the IPython Notebook, the ipymd package can then be imported.
 

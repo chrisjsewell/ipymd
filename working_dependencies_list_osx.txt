@@ -1,4 +1,4 @@
-conda create -n dep_test2 python=2.7.11=0 numpy scipy matplotlib pandas ipython ipython-notebook pillow pyopengl pyqt six spyder
+conda create -n ipymd python=2.7.11=0 numpy scipy matplotlib pandas ipython ipython-notebook pillow pyopengl pyqt six spyder
 
 alabaster                 0.7.8                    py27_0  
 appnope                   0.1.0                    py27_0  
