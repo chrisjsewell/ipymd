@@ -6,12 +6,47 @@ Created on Fri Jul  1 16:45:06 2016
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import animation
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
 from io import BytesIO
 from IPython import get_ipython, display
 
-from ._xkcdify import _XKCDify
+from IPython.display import HTML
+from .JSAnimation.IPython_display import display_animation
+
+def style(style):
+    """A context manager to apply matplotlib style settings from a style specification.
+    
+    Popular styles include; default, ggplot, xkcd, and are used in the the following manner:
+    
+    ::
+    
+        with ipymd.plotting.style('default'):
+            plot = ipymd.plotting.Plotter()
+            plot.display_plot()
+
+    Parameters
+    ----------
+    style : str, dict, or list
+        A style specification. Valid options are:
+
+        +------+-------------------------------------------------------------+
+        | str  | The name of a style or a path/URL to a style file. For a    |
+        |      | list of available style names, see `style.available`.       |
+        +------+-------------------------------------------------------------+
+        | dict | Dictionary with valid key/value pairs for                   |
+        |      | `matplotlib.rcParams`.                                      |
+        +------+-------------------------------------------------------------+
+        | list | A list of style specifiers (str or dict) applied from first |
+        |      | to last in the list.                                        |
+        +------+-------------------------------------------------------------+
+
+    """
+    if style=='xkcd':
+        return plt.xkcd()
+    else: 
+        return plt.style.context(style)    
     
 class Plotter(object):
     """ a class to deal with data plotting """
@@ -49,7 +84,7 @@ class Plotter(object):
             
     figure = property(_get_mplfigure, _set_mplfigure)
     
-    def _get_axes(self,):
+    def _get_axes(self):
         if len(self._axes) == 1:
             return self._axes[0]
         else:
@@ -100,47 +135,15 @@ class Plotter(object):
     def resize_axes(self,width=0.8,height=0.8,left=0.1,bottom=0.1, axes=0):
         """ resiaze axes, for instance to fit object outside of it """
         self._axes[axes].set_position([left,bottom,width,height])
-
-    def apply_xkcd_style(self,axes=0,mag=1.0,
-            f1=50, f2=0.01, f3=15,
-            bgcolor='w',
-            xaxis_loc=None, yaxis_loc=None,
-            xaxis_arrow='+', yaxis_arrow='+',
-            ax_extend=0.1):
-        """ apply the xkcd style to one or more axes i.e. for schematic plots.
-        This should be done after the axes is finalised (i.e everthing plotted)
         
-        Parameters
-        ----------
-        axes : int or list of ints
-            the axes to be modified.
-        mag : float
-            the magnitude of the distortion
-        f1, f2, f3 : int, float, int
-            filtering parameters.  f1 gives the size of the window, f2 gives
-            the high-frequency cutoff, f3 gives the size of the filter
-        xaxis_loc, yaxis_loc : float
-            The locations to draw the x and y axes.  If not specified, they
-            will be drawn from the bottom left of the plot
-        xaxis_arrow, yaxis_arrow : str
-            where to draw arrows on the x/y axes.  Options are '+', '-', '+-', or ''
-        ax_extend : float
-            How far (fractionally) to extend the drawn axes beyond the original
-            axes limits
-        """
-        if len(self._axes)==1:
-            expand_axes=True
-        else:
-            expand_axes=False
-        for ax_id in np.array(axes, ndmin=1):
-            self._axes[axes] = _XKCDify(self._axes[axes],mag,f1,f2,f3,bgcolor,
-            xaxis_loc,yaxis_loc,xaxis_arrow,yaxis_arrow, ax_extend, expand_axes)
+    def add_image(self, image, axes=0, interpolation="bicubic", hide_axes=True, 
+                  width=1., height=1.,origin=(0.,0.), **kwargs):
+        """add image to axes
+        """        
+        x0,y0=origin
+        self._axes[axes].imshow(image, interpolation="bicubic", extent=(x0,x0+width,y0,y0+height) ,**kwargs)
         
-    def add_image(self, image, axes=0, interpolation="bicubic", no_axis=True):
-
-        self._axes[axes].imshow(image, interpolation="bicubic")
-        
-        if no_axis:
+        if hide_axes:
             self._axes[axes].get_xaxis().set_visible(False)
             self._axes[axes].get_yaxis().set_visible(False)
             self._axes[axes].set_frame_on(False)
@@ -187,4 +190,298 @@ class Plotter(object):
                             arrowprops=arrowprops,
                             )    
         self._axes[axes].add_artist(ab)
+    
+def animation_line(x_iter, y_iter, interval=20, xlim=(0,1),ylim=(0,1),
+                 incl_controls=True, plot=None,ax=0,**plot_kwargs):
+    """create an animation of multiple x,y data sets
+    
+    x_iter : iterable
+        any iterable of x data sets, e.g. [[1,2,3],[4,5,6]] 
+    y_iter : iterable
+        an iterable of y data sets, e.g. [[1,2,3],[4,5,6]]
+    interval : int
+        draws a new frame every *interval* milliseconds  
+    xlim : tuple
+        the x_limits for the axes (ignored if using existing plotter)
+    ylim : tuple
+        the y_limits for the axes (ignored if using existing plotter)
+    incl_controls : bool
+        include Javascript play controls
+    plot : ipymd.plotting.Plotter
+        an existing plotter object
+    ax : int
+        the id number of the axes on which to plot (if using existing plotter) 
+    plot_kwargs : various
+        key word arguments to pass to plot method, e.g. marker='o', color='b', ...
+    
+    Returns
+    -------
+    html : IPython.core.display.HTML
+        a html object
+        
+    Notes
+    -----
+    x_iter and y_iter can be yield functions such as:
+    
+    ::
+    
+        def y_iter(x_iter):
+            for xs in x_iter:
+                yield [i**2 for i in xs]
+    
+    This means that the values do not have to be necessarily pre-computed.
+        
+    """
+    if plot is None:
+        plotter = Plotter()
+    else:
+        plotter = plot
+    if isinstance(plotter.axes, list):
+        ax = plotter.axes[ax]
+    else:
+        ax = plotter.axes
+    if plot is None:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    
+    xiter = iter(x_iter)
+    yiter = iter(y_iter)
+    
+    xy_plot, = ax.plot([], [], animated=True, **plot_kwargs)
+    
+    # initialization function: plot the background of each frame
+    def init():
+        xy_plot.set_data([], [])
+        return (xy_plot,)
+    
+    # animation function. This is called sequentially
+    def animate(i):
+        try:
+            xs = xiter.next()
+            ys = yiter.next()
+        except StopIteration:
+            xs = []
+            ys = []
+        xy_plot.set_data(xs,ys)
+        return (xy_plot,)            
+
+    anim = animation.FuncAnimation(plotter.figure, animate, init_func=init,
+                                   frames=x_iter, interval=interval, blit=True)
+    
+    if incl_controls:
+        html =  display_animation(anim)
+    else:
+        html = HTML(anim.to_html5_video())
+    
+    # cleanup
+    xy_plot.remove()
+    
+    return html
+
+def animation_scatter(x_iter, y_iter, interval=20, xlim=(0,1),ylim=(0,1),
+                 incl_controls=True, plot=None,ax=0,**plot_kwargs):
+    """create an animation of multiple x,y data sets
+    
+    x_iter : iterable
+        any iterable of x data sets, e.g. [[1,2,3],[4,5,6]] 
+    y_iter : iterable
+        an iterable of y data sets, e.g. [[1,2,3],[4,5,6]]
+    interval : int
+        draws a new frame every *interval* milliseconds  
+    xlim : tuple
+        the x_limits for the axes (ignored if using existing plotter)
+    ylim : tuple
+        the y_limits for the axes (ignored if using existing plotter)
+    incl_controls : bool
+        include Javascript play controls
+    plot : ipymd.plotting.Plotter
+        an existing plotter object
+    ax : int
+        the id number of the axes on which to plot (if using existing plotter) 
+    plot_kwargs : various
+        key word arguments to pass to plot method, e.g. marker='o', color='b', ...
+    
+    Returns
+    -------
+    html : IPython.core.display.HTML
+        a html object
+        
+    Notes
+    -----
+    x_iter and y_iter can be yield functions such as:
+    
+    ::
+    
+        def y_iter(x_iter):
+            for xs in x_iter:
+                yield [i**2 for i in xs]
+    
+    This means that the values do not have to be necessarily pre-computed.
+        
+    """
+    if plot is None:
+        plotter = Plotter()
+    else:
+        plotter = plot
+    if isinstance(plotter.axes, list):
+        ax = plotter.axes[ax]
+    else:
+        ax = plotter.axes
+    if plot is None:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    
+    xiter = iter(x_iter)
+    yiter = iter(y_iter)
+    
+    xy_plot = ax.scatter([], [], animated=True, **plot_kwargs)
+    
+    # initialization function: plot the background of each frame
+    def init():
+        xy_plot.set_offsets([])
+        return (xy_plot,)
+    
+    # animation function. This is called sequentially
+    def animate(i):
+        try:
+            xs = xiter.next()
+            ys = yiter.next()
+        except StopIteration:
+            xs = []
+            ys = []
+        xy_plot.set_offsets(zip(xs,ys))
+        return (xy_plot,)            
+
+    anim = animation.FuncAnimation(plotter.figure, animate, init_func=init,
+                                   frames=x_iter, interval=interval, blit=True)
+    
+    if incl_controls:
+        html =  display_animation(anim)
+    else:
+        html = HTML(anim.to_html5_video())
+    
+    # cleanup
+    xy_plot.remove()
+    
+    return html
+
+def animation_contourf(x_iter, y_iter, z_iter, interval=20, 
+                       xlim=(0,1),ylim=(0,1),zlim=(0,1.), 
+                        cmap='viridis', cbar=True,
+                        incl_controls=True, plot=None,ax=0,**plot_kwargs):
+    """create an animation of multiple x,y data sets
+    
+    x_iter : iterable
+        any iterable of x data sets, e.g. [[1,2,3],[4,5,6]] 
+    y_iter : iterable
+        an iterable of y data sets, e.g. [[1,2,3],[4,5,6]]
+    y_iter : iterable
+        an iterable of z(x,y) data sets, each set must be of shape (len(x), len(y))
+    interval : int
+        draws a new frame every *interval* milliseconds  
+    xlim : tuple
+        the x_limits for the axes (ignored if using existing plotter)
+    ylim : tuple
+        the y_limits for the axes (ignored if using existing plotter)
+    zlim : tuple
+        the z_limits for the colormap
+    cmap : str or matplotlib.cm
+        the colormap to use (see http://matplotlib.org/examples/color/colormaps_reference.html)
+    incl_controls : bool
+        include Javascript play controls
+    plot : ipymd.plotting.Plotter
+        an existing plotter object
+    ax : int
+        the id number of the axes on which to plot (if using existing plotter) 
+    plot_kwargs : various
+        key word arguments to pass to plot method, e.g. marker='o', color='b', ...
+    
+    Returns
+    -------
+    html : IPython.core.display.HTML
+        a html object
+        
+    Notes
+    -----
+    x_iter and y_iter can be yield functions such as:
+    
+    ::
+    
+        def y_iter(x_iter):
+            for xs in x_iter:
+                yield [i**2 for i in xs]
+    
+    This means that the values do not have to be necessarily pre-computed.
+        
+    """
+    if plot is None:
+        plotter = Plotter()
+    else:
+        plotter = plot
+    if isinstance(plotter.axes, list):
+        ax = plotter.axes[ax]
+    else:
+        ax = plotter.axes
+    if plot is None:
+        ax.set_xlim(xlim)
+        ax.set_ylim(ylim)
+    
+    xiter = iter(x_iter)
+    yiter = iter(y_iter)
+    ziter = iter(z_iter)    
+    
+    zmin, zmax = zlim
+    
+    # has to be in a list to pass between nested functions
+    c_plot = [ax.contourf([0,1], [0,1], [[0,1],[0,1]],
+                          vmin=zmin,vmax=zmax,cmap=cmap, 
+                          animate=True,**plot_kwargs)]
+    if cbar:
+        plt.colorbar(c_plot[0], ax=ax)
+        plt.close()
+    
+    
+    # initialization function: plot the background of each frame
+    def init():
+        for coll in c_plot[0].collections:
+            ax.collections.remove(coll)
+        c_plot[0] = ax.contourf([0,1], [0,1], [[0,0],[0,0]],
+                                vmin=zmin,vmax=zmax,cmap=cmap, 
+                                animate=True,**plot_kwargs)        
+        return c_plot[0].collections
+    
+    # animation function. This is called sequentially
+    def animate(i):
+        try:
+            xs = xiter.next()
+            ys = yiter.next()
+            zs = ziter.next()
+        except StopIteration:
+            xs = []
+            ys = []
+            zs = []
+            
+        X, Y = np.meshgrid(xs, ys)
+        
+        for coll in c_plot[0].collections:
+            ax.collections.remove(coll)
+        
+        c_plot[0] = ax.contourf(X,Y,zs,vmin=zmin,vmax=zmax,cmap=cmap,
+                                animate=True,**plot_kwargs)        
+        return c_plot[0].collections
+
+    anim = animation.FuncAnimation(plotter.figure, animate, init_func=init,
+                                   frames=x_iter, interval=interval, blit=True)
+    
+    if incl_controls:
+        html =  display_animation(anim)
+    else:
+        html = HTML(anim.to_html5_video())
+    
+    # cleanup
+    for coll in c_plot[0].collections:
+        ax.collections.remove(coll)
+    
+    return html
+
 

@@ -316,7 +316,7 @@ class Atom_Manipulation(object):
                                     
     #TODO slice along arbitrary direction
                                     
-    def translate_atoms(self, vector):
+    def translate(self, vector):
         """translate atoms by vector
         
         vector : list
@@ -329,7 +329,7 @@ class Atom_Manipulation(object):
         self._atom_df.y += y
         self._atom_df.z += z
     
-    def rotate_atoms(self, angle, vector=[1,0,0]):
+    def rotate(self, angle, vector=[1,0,0]):
         """rotate the clockwise about the given axis vector 
         by theta degrees.
         

@@ -379,7 +379,6 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
     
     return np.degrees(2*thetas), I
 
-#TODO new numpy (v1.11.0) has auto bin size selection
 def plot_xrd_hist(ang2thetas, intensities, bins=180*100, wlambda=None,barwidth=None):
     """ create histogram plot of xrd spectrum
     

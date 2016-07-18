@@ -1,6 +1,13 @@
 ipymd.plotting package
 ======================
 
+Subpackages
+-----------
+
+.. toctree::
+
+    ipymd.plotting.JSAnimation
+
 Submodules
 ----------
 
