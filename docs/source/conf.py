@@ -40,7 +40,7 @@ MOCK_MODULES = [
 'OpenGL', 'OpenGL.GL', 'OpenGL.raw','OpenGL.arrays','OpenGL.GL.framebufferobjects',
 'PyQt4','PyQt4.QtCore','PyQt4.QtOpenGL','PyQt4.QtGui',
 'matplotlib', 'matplotlib.pyplot', 'matplotlib.cm', 'matplotlib.offsetbox','matplotlib.font_manager',
-'matplotlib.colors', 'mpl_toolkits', 'mpl_toolkits.mplot3d','matplotlib.patches',
+'matplotlib.colors', 'mpl_toolkits', 'mpl_toolkits.mplot3d','matplotlib.patches', 'matplotlib.animation',
 'pandas', 'pandas.tools', 'pandas.tools.plotting', 'pandas.core', 'pandas.core.index',
 'sklearn', 'sklearn.cluster',
 'IPython', 'IPython.display', 'IPython.core', 'IPython.core.display',
