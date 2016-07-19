@@ -7,6 +7,7 @@ from six import string_types
 
 from .. import test_data
 from . import atomdata
+from . import transformations
 
 def get_data_path(data, check_exists=False, module=test_data):
     """return a directory path to data within a module

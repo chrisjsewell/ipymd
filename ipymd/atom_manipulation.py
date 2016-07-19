@@ -4,7 +4,6 @@ Created on Mon May 16 08:15:13 2016
 
 @author: cjs14
 """
-import math
 import pandas as pd
 import numpy as np
 from scipy.spatial import ConvexHull
@@ -13,6 +12,7 @@ from matplotlib.colors import Normalize
 from six import string_types
 
 from .shared import atom_data
+from .shared.transformations import transform_to_crystal, rotate_vectors
 
 class Atom_Manipulation(object):
     """ a class to manipulate atom data
@@ -20,50 +20,76 @@ class Atom_Manipulation(object):
     atom_df : pandas.DataFrame
         containing columns; x, y, z, type
     """
-    def __init__(self, atom_df,undos=1):
+    def __init__(self, atom_df, meta_series=None,undos=1):
         """ a class to manipulate atom data
         
         atom_df : pandas.DataFrame
             containing columns; x, y, z, type
+        meta_series : pandas.Series
+            containing columns; origin, a, b, c to define unit cell
+            if none it will be constructed from the min/max x, y, z values
         undos : int
             number of past dataframes to save
         """
         assert set(atom_df.columns).issuperset(['x','y','z','type'])
         assert undos > 0
         
+        if meta_series is None:
+            meta_series = pd.Series([(atom_df.x.min(),atom_df.y.min(),atom_df.z.min()),
+                                     (atom_df.x.max()-atom_df.x.min(),0.,0.),
+                                     (0.,atom_df.y.max()-atom_df.y.min(),0.),
+                                     (0.,0.,atom_df.z.max()-atom_df.z.min())],
+                                     index=['origin','a','b','c'])
+        else:
+            assert set(meta_series.index).issuperset(['origin','a','b','c'])                
+        
         self._atom_df = atom_df.copy()
         #the one on the left is the newest
         self._old_atom_df = [None]*undos
         self._original_atom_df = atom_df.copy()
 
+        self._meta = meta_series.copy()
+        self._old_meta = [None]*undos
+        self._original_meta = meta_series.copy()
+
     @property
     def df(self):
         return self._atom_df.copy() 
+    @property
+    def meta(self):
+        return self._meta.copy() 
     
-    def _save_df(self):
+    def _save(self):
         self._old_atom_df.pop() # remove the oldest (right)
         self._old_atom_df.insert(0,self._atom_df.copy()) # add newest left
+
+        self._old_meta.pop() # remove the oldest (right)
+        self._old_meta.insert(0,self._meta.copy()) # add newest left
         
     def undo_last(self):
         if self._old_atom_df[0] is not None:
                self._atom_df = self._old_atom_df.pop(0) # get newest left
                self._old_atom_df.append(None)  
+
+               self._meta = self._old_meta.pop(0) # get newest left
+               self._old_meta.append(None)  
         else:
             raise Exception('No previous dataframes')
         
     def revert_to_original(self):
         """ revert to original atom_df """
-        self._save_df()
+        self._save()
         self._atom_df = self._original_atom_df.copy()
+        self._meta = self._original_meta.copy()
         
     def change_variables(self, map_dict, vtype='type'):
         """ change particular variables according to the map_dict """
-        self._save_df()
+        self._save()
         self._atom_df.replace({vtype:map_dict}, inplace=True)
 
     def change_type_variable(self, atom_type, variable, value, type_col='type'):
         """ change particular variable for one atom type """
-        self._save_df()
+        self._save()
         if not hasattr(value, '__iter__'):
             # there is df.loc, df.at or df.set_value, not sure which ones best
             self._atom_df.set_value(self._atom_df[type_col]==atom_type, variable, value)
@@ -117,7 +143,7 @@ class Atom_Manipulation(object):
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
-        self._save_df()
+        self._save()
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
     def color_by_variable(self, colname, cmap='jet', minv=None, maxv=None):
@@ -137,7 +163,7 @@ class Atom_Manipulation(object):
         maxval = var.max() if maxv is None else maxv
         norm = Normalize(minval, maxval,clip=True)
         
-        self._save_df()
+        self._save()
         self._atom_df.color = [tuple(col[:3]) for col in colormap(norm(var),bytes=True)]
 
     def color_by_categories(self, colname, cmap='jet', sort=True):
@@ -162,7 +188,7 @@ class Atom_Manipulation(object):
         
         color_dict = dict([(cat,colormap(i/num_cats,bytes=True)[:3]) for i,cat in enumerate(unique_cats)])
         
-        self._save_df()
+        self._save()
         self._atom_df.color = cats.map(color_dict)
                 
     def filter_variables(self, values, vtype='type'):
@@ -173,8 +199,242 @@ class Atom_Manipulation(object):
         if isinstance(values, string_types):
             values = [values]
         
-        self._save_df()
+        self._save()
         self._atom_df = self._atom_df[self._atom_df[vtype].isin(values)]        
+            
+#------------------------
+# Geometric manipulation
+            
+    def repeat_cell(self,a=1,b=1,c=1,original_first=False):
+        """ repeat atoms along a, b, c directions (and update unit cell)
+    
+        a : int or tuple
+            repeats in 'a' direction, if tuple then defines repeats in -/+ direction
+        b : int or tuple
+            repeats in 'b' direction, if tuple then defines repeats in -/+ direction
+        c : int or tuple
+            repeats in 'c' direction, if tuple then defines repeats in -/+ direction
+        original_first: bool
+            if True, the original atoms will be first in the DataFrame
+        """
+        if isinstance(a, int):
+            arange = range(0,abs(a)+1)
+        else:
+            arange = range(-abs(a[0]),abs(a[1])+1)
+        if isinstance(b, int):
+            brange = range(0,abs(b)+1)
+        else:
+            brange = range(-abs(b[0]),abs(b[1])+1)
+        if isinstance(c, int):
+            crange = range(0,abs(c)+1)
+        else:
+            crange = range(-abs(c[0]),abs(c[1])+1)
+        
+        avec = np.asarray(self._meta.a)
+        bvec = np.asarray(self._meta.b)
+        cvec = np.asarray(self._meta.c)        
+
+        dfs = []
+        if original_first:
+            dfs.append(self._atom_df.copy())            
+            
+        for i in arange:
+            for j in brange:
+                for k in crange:
+                    if i==0 and j==0 and k==0 and original_first:
+                        continue
+                    atom_copy = self._atom_df.copy()
+                    atom_copy[['x','y','z']] = (atom_copy[['x','y','z']]
+                                + i*avec  + j*bvec + k*cvec)
+                    dfs.append(atom_copy)
+        self._save()
+        self._atom_df = pd.concat(dfs)
+        #TODO check for identical atoms and warn
+        
+        origin = np.asarray(self._meta.origin)
+        self._meta.origin = tuple(origin + arange[0]*avec + brange[0]*bvec + crange[0]*cvec)
+        self._meta.a = tuple(avec*len(arange))
+        self._meta.b = tuple(bvec*len(brange))
+        self._meta.c = tuple(cvec*len(crange))
+        
+#    def _convert_basis_abc(self, xyz):
+#        """ convert  x,y,z to a,b,c basis
+#        
+#        xyz : numpy.array((N,3))
+#        """
+#        origin = np.asarray(self._meta.origin)
+#        avec = np.asarray(self._meta.a)
+#        bvec = np.asarray(self._meta.b)
+#        cvec = np.asarray(self._meta.c)
+#        
+#        lattparams_bb(np.asarray([self._meta.a,self._meta.b,self._meta.c]))
+#        
+#        # move to origin
+#        xyz = xyz - origin
+#        
+#        # convert basis
+#        basis = np.array([avec,bvec,cvec]).T
+#        invbasis = np.linalg.inv(basis)
+#        
+#        abc = np.dot(invbasis,xyz.T).T
+#        
+#        return abc
+
+
+#    def _convert_basis_xyz(self, abc):
+#        """ convert  a,b,c to x,y,z  basis
+#        
+#        abc : numpy.array((N,3))
+#        """
+#        origin = np.asarray(self._meta.origin)
+#        avec = np.asarray(self._meta.a)
+#        bvec = np.asarray(self._meta.b)
+#        cvec = np.asarray(self._meta.c)
+#        
+#        # convert basis
+#        basis = np.array([avec,bvec,cvec]).T
+#        xyz = np.dot(basis,abc.T).T
+#        
+#        # move from origin
+#        xyz = xyz + origin
+#        
+#        return xyz
+            
+        
+    def slice_fraction(self, amin=0, amax=1, bmin=0, bmax=1, cmin=0, cmax=1,
+                       incl_max=False, update_uc=True,delta=0.01):
+        """ slice along a,b,c directions (from origin) as fraction of vector length 
+
+        incl_max : bool
+            whether to slice < (False) <= (True) max values
+        update_uc : bool
+            update unit cell (a,b,c,origin) to match slice
+        delta : float
+            retain atoms within 'delta' fraction outside of slice plane)
+        
+        """
+        self._save()
+        
+        abc = transform_to_crystal(self._atom_df[['x','y','z']].values,
+                                 self._meta.a,self._meta.b,self._meta.c,
+                                 self._meta.origin)
+
+        if incl_max:
+            mask = ((abc[:,0]>=amin-delta) & (abc[:,0]<=amax+delta) & 
+                    (abc[:,1]>=bmin-delta) & (abc[:,1]<=bmax+delta) & 
+                    (abc[:,2]>=cmin-delta) & (abc[:,2]<=cmax+delta)) 
+        else:
+            mask = ((abc[:,0]>=amin-delta) & (abc[:,0]<amax+delta) & 
+                    (abc[:,1]>=bmin-delta) & (abc[:,1]<bmax+delta) & 
+                    (abc[:,2]>=cmin-delta) & (abc[:,2]<cmax+delta))  
+
+        self._atom_df = self._atom_df[mask] 
+        
+        if update_uc:
+            origin = np.asarray(self._meta.origin)
+            avec = np.asarray(self._meta.a)
+            bvec = np.asarray(self._meta.b)
+            cvec = np.asarray(self._meta.c)
+            
+            self._meta.origin = tuple(origin+amin*avec+bmin*bvec+cmin*cvec)
+            self._meta.a = avec * (amax-amin)
+            self._meta.b = bvec * (bmax-bmin)
+            self._meta.c = cvec * (cmax-cmin)            
+        
+    def slice_absolute(self, amin=0, amax=None, bmin=0, bmax=None, cmin=0, cmax=None,
+                       incl_max=False, update_uc=True, delta=0.01):
+        """ slice along a,b,c directions (from origin) given absolute vector length 
+
+        if amax, bmax or cmax is None, then will use the vector length    
+        
+        update_uc : bool
+            update unit cell (a,b,c,origin) to match slice
+        incl_max : bool
+            whether to slice < (False) <= (True) max values
+        delta : float
+            retain atoms within 'delta' fraction outside of slice plane)
+            
+        """
+        self._save()
+        
+        abc = transform_to_crystal(self._atom_df[['x','y','z']].values,
+                                 self._meta.a,self._meta.b,self._meta.c,
+                                 self._meta.origin)
+        
+        anorm = np.linalg.norm(self._meta.a)
+        bnorm = np.linalg.norm(self._meta.b)
+        cnorm = np.linalg.norm(self._meta.c)
+        
+        amax = anorm if amax is None else amax
+        bmax = anorm if bmax is None else bmax
+        cmax = anorm if cmax is None else cmax                            
+
+        if incl_max:       
+            mask = ((abc[:,0]>=(amin/anorm)-delta) & (abc[:,0]<=(amax/anorm)+delta) & 
+                    (abc[:,1]>=(bmin/bnorm)-delta) & (abc[:,1]<=(bmax/bnorm)+delta) & 
+                    (abc[:,2]>=(cmin/cnorm)-delta) & (abc[:,2]<=(cmax/cnorm)+delta)) 
+        else:
+            mask = ((abc[:,0]>=(amin/anorm)-delta) & (abc[:,0]<(amax/anorm)+delta) & 
+                    (abc[:,1]>=(bmin/bnorm)-delta) & (abc[:,1]<(bmax/bnorm)+delta) & 
+                    (abc[:,2]>=(cmin/cnorm)-delta) & (abc[:,2]<(cmax/cnorm)+delta)) 
+
+        self._atom_df = self._atom_df[mask]                                          
+                                    
+        if update_uc:
+            origin = np.asarray(self._meta.origin)
+            avec = np.asarray(self._meta.a)
+            bvec = np.asarray(self._meta.b)
+            cvec = np.asarray(self._meta.c)
+            
+            self._meta.origin = tuple(origin+
+                                      amin*avec/anorm + 
+                                      bmin*bvec/bnorm + 
+                                      cmin*cvec/cnorm)
+            self._meta.a = avec * (amax-amin)/anorm
+            self._meta.b = bvec * (bmax-bmin)/bnorm
+            self._meta.c = cvec * (cmax-cmin)/cnorm            
+
+    def translate(self, vector, update_uc=True):
+        """translate atoms by vector
+        
+        vector : list
+            x, y, z translation
+        update_uc : bool
+            update unit cell (a,b,c,origin) to match translation
+        
+        """
+        x,y,z = vector
+        self._save()
+        self._atom_df.x += x
+        self._atom_df.y += y
+        self._atom_df.z += z
+        
+        if update_uc:
+            self._meta.origin = np.array(self._meta.origin) + np.asarray(vector)
+            
+    def rotate(self, angle, vector=[1,0,0], update_uc=True):
+        """rotate the clockwise about the given axis vector 
+        by theta degrees.
+        
+        e.g. for rotate_atoms(90,[0,0,1]); [0,1,0] -> [1,0,0]
+        
+        angle : float
+            rotation angle in degrees
+        vector : iterable
+            vector to rotate around [x0,y0,z0] 
+        update_uc : bool
+            update unit cell (a,b,c,origin) to match rotation
+
+        """
+        coords = self._atom_df[['x','y','z']].values
+        new_coords = rotate_vectors(coords,vector,angle)
+        self._save()
+        self._atom_df[['x','y','z']] = new_coords
+        
+        if update_uc:
+            self._meta.a = tuple(rotate_vectors(self._meta.a,vector,angle)[0])
+            self._meta.b = tuple(rotate_vectors(self._meta.b,vector,angle)[0])
+            self._meta.c = tuple(rotate_vectors(self._meta.c,vector,angle)[0])
         
     def _pnts_in_pointcloud(self, points, new_pts):
         """2D or 3D
@@ -195,8 +455,9 @@ class Atom_Manipulation(object):
 
         points : np.array((N,3))        
         """ 
+        self._save()
         inside = self._pnts_in_pointcloud(points, self._atom_df[['x','y','z']].values)
-        self._save_df()
+        self._save()
         self._atom_df = self._atom_df[inside]
 
     def filter_inside_box(self, vectors, origin=np.zeros(3)):
@@ -210,41 +471,6 @@ class Atom_Manipulation(object):
         a,b,c = vectors + origin
         points = [origin, a, b, a+b, c, a+c, b+c, a+b+c]
         self.filter_inside_pts(points)
-    
-    def _rotate(self, vector, axis, theta):
-        """rotate the vector v clockwise about the given axis vector 
-        by theta degrees.
-        
-        e.g. df._rotate([0,1,0],[0,0,1],90) -> [1,0,0]
-        
-        vector : iterable or list of iterables
-            vector to rotate [x,y,z] or [[x1,y1,z1],[x2,y2,z2]]
-        axis : iterable
-            axis to rotate around [x0,y0,z0] 
-        theta : float
-            rotation angle in degrees
-        """
-        theta = -1*theta
-        
-        axis = np.asarray(axis)
-        theta = np.asarray(theta)*np.pi/180.
-        axis = axis/math.sqrt(np.dot(axis, axis))
-        a = math.cos(theta/2.0)
-        b, c, d = -axis*math.sin(theta/2.0)
-        aa, bb, cc, dd = a*a, b*b, c*c, d*d
-        bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
-        rotation_matrix = np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
-                         [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
-                         [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]]) 
-        
-        #TODO think about using np.einsum or something more efficient?
-        if len(np.asarray(vector).shape)==1:
-            return np.dot(rotation_matrix, vector)
-        else:
-            new_vectors = []
-            for v in vector:
-               new_vectors.append(np.dot(rotation_matrix, v)) 
-            return np.asarray(new_vectors)
 
     def filter_inside_hexagon(self, vectors, origin=np.zeros(3)):
         """return only atoms inside hexagonal prism
@@ -260,92 +486,6 @@ class Atom_Manipulation(object):
         points = np.array(points) + origin
         self.filter_inside_pts(points)
 
-    def repeat_cell(self, vectors, repetitions=((0,1),(0,1),(0,1)),original_first=False):
-        """ repeat atoms along vectors a, b, c 
-
-        vectors : np.array((3,3))
-            a,b,c vectors  
-        original_first: bool
-            if True, the original atoms will be first in the DataFrame
-        """
-        xreps,yreps,zreps = repetitions
-        if isinstance(xreps, int):
-            xreps = (0,xreps)
-        if isinstance(yreps, int):
-            yreps = (0,yreps)
-        if isinstance(zreps, int):
-            zreps = (0,zreps)
-
-        dfs = []
-        if original_first:
-            dfs.append(self._atom_df.copy())            
-            
-        for i in range(xreps[0], xreps[1]+1):
-            for j in range(yreps[0], yreps[1]+1):
-                for k in range(zreps[0], zreps[1]+1):
-                    if i==0 and j==0 and k==0 and original_first:
-                        continue
-                    atom_copy = self._atom_df.copy()
-                    atom_copy[['x','y','z']] = (atom_copy[['x','y','z']]
-                                + i*vectors[0]  + j*vectors[1] + k*vectors[2])
-                    dfs.append(atom_copy)
-        self._save_df()
-        self._atom_df = pd.concat(dfs)
-        #TODO check for identical atoms and warn
-        
-    def slice_x(self, minval=None, maxval=None):
-        self._save_df()
-        if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['x']>=minval].copy()
-        if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['x']<=maxval].copy()
-
-    def slice_y(self, minval=None, maxval=None):
-        self._save_df()
-        if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['y']>=minval].copy()
-        if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['y']<=maxval].copy()
-
-    def slice_z(self, minval=None, maxval=None):
-        self._save_df()
-        if minval is not None:
-            self._atom_df = self._atom_df[self._atom_df['z']>=minval].copy()
-        if maxval is not None:
-            self._atom_df = self._atom_df[self._atom_df['z']<=maxval].copy()
-                                    
-    #TODO slice along arbitrary direction
-                                    
-    def translate(self, vector):
-        """translate atoms by vector
-        
-        vector : list
-            x, y, z translation
-        
-        """
-        x,y,z = vector
-        self._save_df()
-        self._atom_df.x += x
-        self._atom_df.y += y
-        self._atom_df.z += z
-    
-    def rotate(self, angle, vector=[1,0,0]):
-        """rotate the clockwise about the given axis vector 
-        by theta degrees.
-        
-        e.g. for rotate_atoms(90,[0,0,1]); [0,1,0] -> [1,0,0]
-        
-        angle : float
-            rotation angle in degrees
-        vector : iterable
-            vector to rotate around [x0,y0,z0] 
-
-        """
-        xyz = self._atom_df[['x','y','z']].values
-        new_xyz = self._rotate(xyz, vector,angle)
-        self._save_df()
-        self._atom_df[['x','y','z']] = new_xyz
-        
     def group_atoms_as_mols(self, atom_ids, name, remove_atoms=True, mean_xyz=True,
                             color='red',transparency=1.,radius=1.):
         """ combine atoms into a molecule
@@ -359,6 +499,7 @@ class Atom_Manipulation(object):
             use the mean coordinate of atoms for molecule, otherwise use coordinate of first atom
             
         """
+        df = self._atom_df.copy()
         # test no atoms in multiple molecules
         all_atoms = np.asarray(atom_ids).flatten()  
         assert len(set(all_atoms))==len(all_atoms), 'atoms in multiple molecules'
@@ -377,5 +518,5 @@ class Atom_Manipulation(object):
         if mol_data:
             moldf = pd.DataFrame(mol_data,columns=['type','x','y','z','radius','color','transparency'])
             df = pd.concat([df,moldf])
-        self._save_df()
+        self._save()
         self._atom_df = df

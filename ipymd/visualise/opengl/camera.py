@@ -2,7 +2,7 @@
 import numpy as np
 import numpy.linalg as LA
 
-from ..transformations import rotation_matrix, translation_matrix, clip_matrix
+from ...shared.transformations import rotation_matrix, translation_matrix, clip_matrix
 
 def fequal(a, b, tol):
     return (abs(a-b) / max(abs(a), abs(b))) < tol

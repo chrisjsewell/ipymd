@@ -29,7 +29,7 @@ class Crystal(DataInput):
     parameters.
 
     """
-    def __init__(self, positions, atom_type, group,
+    def setup_data(self, positions, atom_type, group,
             cellpar=[1.0, 1.0, 1.0, 90, 90, 90], repetitions=[1, 1, 1],
             mass_map={}, charge_map={}):
         """Build a crystal from atomic positions, space group and cell
@@ -85,7 +85,8 @@ class Crystal(DataInput):
         c1,c2,c3,c4,c5,c6 = cellpar 
         a,b,c = cellpar_to_cell([c1,c2,c3,c4,c5,c6])
         
-        self._sim_box = (np.array([a*nx, b*ny, c*nz]),np.array([0.,0.,0.]))
+        self._meta = pd.Series([(0.,0.,0.), tuple(a*nx), tuple(b*ny), tuple(c*nz)],
+                                index=['origin','a','b','c'])
         
         for rx in range(nx):
             for ry in range(ny):
@@ -109,12 +110,17 @@ class Crystal(DataInput):
 
         self._add_colors(self._atoms)
         self._add_radii(self._atoms)
+        self._data_set = True
   
-    def get_atom_data(self):
+    def _get_atom_data(self,step):
         """ return atom data """
         return self._atoms.copy()
 
-    def get_simulation_box(self):
-        """ return list of coordinates origin & [a,b,c] """
-        return self._sim_box
+    def _get_meta_data(self,step):
+        """ return pandas.Series of coordinates origin, a, b & c """
+        return self._meta.copy()
+
+    def _count_configs(self):
+        """ return int of total number of atomic configurations """
+        return 1
 

@@ -10,37 +10,32 @@ functions to calculate basic properties of the atoms
 import numpy as np
 from scipy.spatial import ConvexHull
 
-def _unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
+from ..shared.transformations import angle_between_vectors
 
-def _angle_between(v1, v2, rounded=None):
-    """ Returns the angle in radians between vectors 'v1' and 'v2'::
-
-            >>> angle_between((1, 0, 0), (0, 1, 0))
-            1.5707963267948966
-            >>> angle_between((1, 0, 0), (1, 0, 0))
-            0.0
-            >>> angle_between((1, 0, 0), (-1, 0, 0))
-            3.141592653589793
-    """
-    v1_u = _unit_vector(v1)
-    v2_u = _unit_vector(v2)
-    angle =  np.degrees(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
-    if rounded is not None:
-        angle = round(angle,rounded)
-    return angle
-
-def volume_bb(vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]), rounded=None):
+def volume_bb(vectors=[[1,0,0],[0,1,0],[0,0,1]], rounded=None,
+              cells=(1,1,1)):
     """ calculate volume of the bounding box        
+
+    Parmeters
+    ---------
+    rounded : int
+        the number of decimal places to return
+    cells : (int,int,int)
+        how many unit cells the vectors represent in each direction
+    
+    Returns
+    -------
+    volume : float
+    
     """
-    a,b,c = vectors
+    a,b,c = np.asarray(vectors)
+    a,b,c = a/cells[0],b/cells[1],c/cells[2]
     vol = a.dot(np.cross(b,c))
     if rounded is not None:
         vol = round(vol, rounded)
     return vol
 
-def lattparams_bb(vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]),
+def lattparams_bb(vectors=[[1,0,0],[0,1,0],[0,0,1]],
                      rounded=None, cells=(1,1,1)):
     """ calculate unit cell parameters of the bounding box 
     
@@ -53,11 +48,11 @@ def lattparams_bb(vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]),
     
     Returns
     -------
-    a, b, c, alpha, beta, gamma
+    a, b, c, alpha, beta, gamma (in degrees)
     
     """
     
-    a,b,c = vectors
+    a,b,c = np.asarray(vectors)
     a0,b0,c0 = cells
     a = a/a0
     b = b/b0
@@ -67,19 +62,22 @@ def lattparams_bb(vectors=np.array([[1,0,0],[0,1,0],[0,0,1]]),
     b_length = np.linalg.norm(b)
     c_length = np.linalg.norm(c)
     
+    alpha = np.degrees(angle_between_vectors(b,c))
+    beta = np.degrees(angle_between_vectors(a,c))
+    gamma = np.degrees(angle_between_vectors(a,b))
+
     if rounded is not None:
         a_length = round(a_length, rounded)
         b_length = round(b_length, rounded)
         c_length = round(c_length, rounded)
-
-    alpha = _angle_between(b,c, rounded)
-    beta = _angle_between(a,c, rounded)
-    gamma = _angle_between(a,b, rounded)
+        alpha = round(alpha, rounded)
+        beta = round(beta, rounded)
+        gamma = round(gamma, rounded)
     
     return a_length, b_length, c_length, alpha, beta, gamma
     
     
-def density_bb(atoms_df, vectors=np.array([[1,0,0],[0,1,0],[0,0,1]])):
+def density_bb(atoms_df, vectors=[[1,0,0],[0,1,0],[0,0,1]]):
     """ calculate density of the bounding box (assuming all atoms are inside)
     """
     assert set(atoms_df.columns).issuperset(['mass'])

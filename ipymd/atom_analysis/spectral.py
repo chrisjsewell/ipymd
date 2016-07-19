@@ -73,9 +73,9 @@ def _set_thetas(min2theta=1.,max2theta=179.):
     max_theta = math.radians(max2theta) / 2.
     return min_theta, max_theta
 
-def _compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
+def _original_compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
                   rspace=[1,1,1], periodic=[True,True,True], manual=False):
-    """Compute full reciprocal lattice mesh
+    """Compute full reciprocal lattice mesh, here for prosperity
     
     Properties
     ----------
@@ -94,8 +94,8 @@ def _compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
     periodic : list of bools
         whether periodic boundary in the h, k, and l directions respectively
     manual : bool
-        use manual spacing of reciprocal lattice points based on the values of the c parameters 
-        (good for comparing diffraction results from multiple simulations, but small c required).
+        use manual spacing of reciprocal lattice points based on the values of the rspac parameters 
+        (good for comparing diffraction results from multiple simulations, but small rspace required).
         
     Returns
     -------
@@ -106,7 +106,7 @@ def _compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
     # get cell parameters
     a,b,c,alpha,beta,gamma = basic.lattparams_bb(sim_abc)
     cell_lenghts = (a,b,c)
-    if alpha!=90 or beta!=90 or gamma!=90:
+    if not np.allclose([alpha,beta,gamma],[90,90,90]):
         raise ValueError("Compute XRD does not work with triclinic structures")
     
     # maximum reciprocal lattice vector |K|, 
@@ -144,6 +144,77 @@ def _compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
     
     return rmesh
 
+def _compute_rmesh_triclinic(sim_abc, wlambda, min_theta, max_theta,
+                              rspace=[1.,1.,1.],manual=False,periodic=[True,True,True]):
+    """Compute full reciprocal lattice mesh
+    
+    Properties
+    ----------
+    sim_abc : numpy.array((3,3))
+        a,b,c cell vectors (length units)
+    wlambda : float
+        radiation wavelength (length units)
+        x-rays usually in the range 0.1 to 100 Angstroms
+    min_theta : float
+        minimum theta range to explore (radians)
+    max_theta : float
+        maximum theta range to explore (radians)
+    rspace : list of floats
+        parameters to multiply the spacing of the reciprocal lattice nodes 
+        in the h, k, and l directions respectively
+    manual : bool
+        use manual spacing of reciprocal lattice points based on the values of the rspace parameters 
+        (good for comparing diffraction results from multiple simulations, but small rspace required).
+    periodic : list of bools
+        whether periodic boundary in the h, k, and l directions respectively
+        
+    Returns
+    -------
+    rmesh : np.array((N,3))
+        mesh of k points defining reciprocal lattice
+    
+    """        
+    if not np.any(periodic):
+        raise ValueError('at least one direction must be periodic')
+    
+    # maximum reciprocal lattice vector |K|, 
+    # calculated from Bragg's law 
+    Kmax = 2 * math.sin(max_theta) / wlambda 
+        
+    # Calculate the rimitive reciprocal lattice vectors
+    a,b,c = sim_abc
+    a_recip = np.cross(b,c)/(np.dot(a,np.cross(b,c)))
+    b_recip = np.cross(c,a)/(np.dot(a,np.cross(b,c)))
+    c_recip = np.cross(a,b)/(np.dot(a,np.cross(b,c)))
+    
+    recip_lengths = map(np.linalg.norm, [a_recip,b_recip,c_recip])
+    
+    # get mean length of periodic directions
+    mean_length = np.mean(np.array(recip_lengths)[np.array(periodic)])
+    # set non-periodic directions as the mean length of periodic ones
+    recip_lengths = [r if p else mean_length for r,p in zip(recip_lengths,periodic)]
+        
+    # maximum integer value for K points in each dimension
+    Knmax = [math.ceil(Kmax / (recip_lengths[i]*rspace[i])) for i in range(3)]
+    
+    # create the full reciprocal lattice indices grid
+    imesh = np.mgrid[-Knmax[0]:Knmax[0]+1:1, 
+               -Knmax[1]:Knmax[1]+1:1, 
+               -Knmax[1]:Knmax[1]+1:1].reshape(3,-1).T
+
+    if not manual:
+        # calulate reciprocal lattice
+        rmesh = (np.einsum('j,i->ji',imesh[:,0],a_recip)*rspace[0] + 
+                 np.einsum('j,i->ji',imesh[:,1],b_recip)*rspace[1] + 
+                 np.einsum('j,i->ji',imesh[:,2],c_recip)*rspace[2])     
+    else:
+        # calulate reciprocal lattice
+        rmesh = (imesh[:,0]*rspace[0] + 
+                 imesh[:,1]*rspace[1] + 
+                 imesh[:,2]*rspace[2]) 
+    
+    return rmesh
+    
 def _restrict_rmesh(rmesh, wlambda, min_theta, max_theta):
     """filter mesh points to only those in Eswald's sphere 
     (and angular limits)
@@ -183,12 +254,12 @@ def _restrict_rmesh(rmesh, wlambda, min_theta, max_theta):
     # return remaining mesh points
     return rmesh[radius_mask][angle_mask], K[angle_mask], theta[angle_mask]
 
-def _get_sf_coeffs():
+def get_sf_coeffs():
     datapath = get_data_path('xray_scattering_factors_coefficients.csv',
                              module=data)
     return pd.read_csv(datapath, index_col=0,comment='#')
 
-def _calc_struct_factors(atoms_df,rmesh_sphere,wlambda,k_mods):
+def _calc_struct_factors(atoms_df,rmesh_sphere,k_mods):
     """ calculate atomic scattering factors, fj, 
     for each atom at each reciprocal lattice point
 
@@ -199,9 +270,6 @@ def _calc_struct_factors(atoms_df,rmesh_sphere,wlambda,k_mods):
     rmesh_sphere : np.array((N,3))
         mesh of k points defining reciprocal lattice, 
         retricted to Eswald's shere (and angular limits)
-    wlambda : float
-        radiation wavelength (length units)
-        x-rays usually in the range 0.1 to 100 Angstroms
     k_mods : np.array((N,1))
          modulus for each k-point, only required for calclating Lorentz-polarization factor
 
@@ -216,7 +284,7 @@ def _calc_struct_factors(atoms_df,rmesh_sphere,wlambda,k_mods):
     K_2_sqr = (0.5*k_mods)**2
 
     # get the structure factor coefficients
-    sf_coeffs_df = _get_sf_coeffs()
+    sf_coeffs_df = get_sf_coeffs()
     
     struct_factors = {}
     for atype in atoms_df.type.unique():
@@ -271,33 +339,36 @@ def _calc_intensities(atoms_df, rmesh_sphere, wlambda, struct_factors,
     # calculate intensities
     return Lp*F*np.conjugate(F)/float(atoms_df.shape[0])
 
-def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
-                rspace=[1,1,1], periodic=[True,True,True], manual=False, lp=True):
+
+def compute_xrd(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=True,
+                rspace=[1,1,1], manual=False,periodic=[True,True,True]):
     r"""Compute predicted x-ray diffraction intensities for a given wavelength
     
     Properties
     ----------
     atoms_df : pandas.DataFrame
         a dataframe of info for each atom, including columns; x,y,z,type
-    sim_abc : numpy.array((3,3))
-        a,b,c cell vectors (length units)
+    meta_data : pandas.Series
+        data of a,b,c crystal vectors (as tuples, e.g. meta_data.a = (0,0,1))
     wlambda : float
         radiation wavelength (length units)
-        x-rays usually in the range 0.1 to 100 Angstroms
+        typical values are Cu Ka = 1.54, Mo Ka = 0.71 Angstroms
     min2theta : float
         minimum 2 theta range to explore (degrees)
     max2theta : float
         maximum 2 theta range to explore (degrees)
+    lp : bool
+        switch to apply Lorentz-polarization factor
+    use_triclinic : bool
+        use_triclinic     
     rspace : list of floats
         parameters to adjust the spacing of the reciprocal lattice nodes 
         in the h, k, and l directions respectively
-    periodic : list of bools
-        whether periodic boundary in the h, k, and l directions respectively
     manual : bool
         use manual spacing of reciprocal lattice points based on the values of the c parameters 
         (good for comparing diffraction results from multiple simulations, but small c required).
-    lp : bool
-        switch to apply Lorentz-polarization factor
+    periodic : list of bools
+        whether periodic boundary in the h, k, and l directions respectively
 
     Returns
     -------
@@ -320,14 +391,31 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
     5. Compute the structure factor at each reciprocal lattice point, for each atom type
     6. Compute the x-ray diffraction intensity at each reciprocal lattice point
     7. Group and sum intensities by angle
-
-    The reciprocal k-point modulii are calculated from Bragg's law:    
+    
+    reciprocal points of the lattice are computed such that:
     
     .. math::
     
-        \left| {\mathbf{K}} \right| = \frac{1}{{d_{\text{hkl}} }} = \frac{2\sin \left( \theta \right)}{\lambda }
+        \mathbf{K} = {m_{1}}\cdot \mathbf{b}_{1}+{m_{2}}\cdot \mathbf{b}_{2}+{m_{3}}\cdot \mathbf{b}_{3}
+    
+    where,
+    
+    .. math::
+
+        \begin{aligned}
+        \mathbf {b_{1}} &= {\frac {\mathbf {a_{2}} \times \mathbf {a_{3}} }{\mathbf {a_{1}} \cdot (\mathbf {a_{2}} \times \mathbf {a_{3}} )}}\\
+        \mathbf {b_{2}} &= {\frac {\mathbf {a_{3}} \times \mathbf {a_{1}} }{\mathbf {a_{2}} \cdot (\mathbf {a_{3}} \times \mathbf {a_{1}} )}}\\
+        \mathbf {b_{3}} &= {\frac {\mathbf {a_{1}} \times \mathbf {a_{2}} }{\mathbf {a_{3}} \cdot (\mathbf {a_{1}} \times \mathbf {a_{2}} )}}
+        \end{aligned}
         
-    and are restricted to within the Eswald's sphere, as illustrated:
+    The reciprocal k-point modulii of the x-ray is calculated from Bragg's law:    
+    
+    .. math::
+    
+        \left| {\mathbf{K}_{\lambda}} \right| = \frac{1}{{d_{\text{hkl}} }} = \frac{2\sin \left( \theta \right)}{\lambda }
+        
+    This is used to construct an Eswald's sphere, 
+    and only reciprocal lattice ponts within are retained, as illustrated:
         
     .. image:: ../images/xrd_mesh.jpg
     
@@ -371,10 +459,12 @@ def compute_xrd(atoms_df, sim_abc,wlambda, min2theta=1.,max2theta=179.,
 
 
     """
-    min_theta, max_theta = _set_thetas(min2theta,max2theta)
-    rmesh = _compute_rmesh(sim_abc,wlambda,min_theta, max_theta,rspace, periodic, manual)
+    sim_abc = np.asarray([meta_data.a,meta_data.b,meta_data.c])
+    
+    min_theta, max_theta = _set_thetas(min2theta,max2theta)    
+    rmesh = _compute_rmesh_triclinic(sim_abc,wlambda,min_theta, max_theta,rspace, manual, periodic)
     rmesh_sphere, k_mods, thetas = _restrict_rmesh(rmesh,wlambda,min_theta, max_theta)
-    struct_factors = _calc_struct_factors(atoms_df,rmesh_sphere,wlambda,k_mods)
+    struct_factors = _calc_struct_factors(atoms_df,rmesh_sphere,k_mods)
     I = _calc_intensities(atoms_df,rmesh_sphere,wlambda,struct_factors,thetas,k_mods,use_Lp=lp)
     
     return np.degrees(2*thetas), I
@@ -412,4 +502,5 @@ def plot_xrd_hist(ang2thetas, intensities, bins=180*100, wlambda=None,barwidth=N
     if wlambda is not None:
         plot.axes.legend(loc='upper right',framealpha=0.5)
     return plot
-    
+
+##TODO identification and classification of peaks    

@@ -11,7 +11,7 @@ Python environment within which to use ipymd:
 
     conda create -n ipymd -c cjs14 ipymd
     source activate ipymd
-    ipython notebook
+    jupyter notebook
 
 Currently the conda package is only available for OSX. For other operating systems, 
 or to use the latest version from Github, the following environment should work:

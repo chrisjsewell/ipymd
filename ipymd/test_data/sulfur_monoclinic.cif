@@ -1,0 +1,63 @@
+data_global
+_chemical_name_mineral 'Rosickyite'
+loop_
+_publ_author_name
+'Watanabe Y'
+_journal_name_full 'Acta Crystallographica, Section B'
+_journal_volume 30 
+_journal_year 1974
+_journal_page_first 1396
+_journal_page_last 1401
+_publ_section_title
+;
+ The crystal structure of monoclinic gamma-sulfur
+;
+_database_code_amcsd 0009509
+_chemical_compound_source 'Synthetic'
+_chemical_formula_sum 'S'
+_cell_length_a 8.442
+_cell_length_b 13.025
+_cell_length_c 9.356
+_cell_angle_alpha 90
+_cell_angle_beta 124.98
+_cell_angle_gamma 90
+_cell_volume 842.915
+_exptl_crystal_density_diffrn      2.021
+_symmetry_space_group_name_H-M 'P 1 2/c 1'
+loop_
+_space_group_symop_operation_xyz
+  'x,y,z'
+  'x,-y,1/2+z'
+  '-x,y,1/2-z'
+  '-x,-y,-z'
+loop_
+_atom_site_label
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+_atom_site_U_iso_or_equiv
+S1   0.64720   0.34530   0.32360   0.07219
+S2   0.80970   0.57940   0.46960   0.05699
+S3   0.74570   0.44300   0.53160   0.05699
+S4   0.58390   0.67660   0.38390   0.05193
+S5   0.08120   0.79790   0.19990   0.06079
+S6   0.24230   0.03130   0.22050   0.07346
+S7   0.30670   0.89380   0.34990   0.07092
+S8   0.14820   0.12750   0.32930   0.07852
+loop_
+_atom_site_aniso_label
+_atom_site_aniso_U_11
+_atom_site_aniso_U_22
+_atom_site_aniso_U_33
+_atom_site_aniso_U_12
+_atom_site_aniso_U_13
+_atom_site_aniso_U_23
+S1 0.08780 0.06330 0.06750 0.02990 0.04490 0.01090
+S2 0.03850 0.07670 0.05520 -0.00340 0.02600 0.00630
+S3 0.05700 0.07570 0.04020 0.00710 0.02990 0.01310
+S4 0.05460 0.05500 0.05100 -0.00680 0.03400 -0.00860
+S5 0.07170 0.05620 0.06370 0.00260 0.04460 -0.00850
+S6 0.07690 0.09320 0.07350 -0.03490 0.05650 -0.02000
+S7 0.04290 0.09980 0.06470 0.00350 0.02690 -0.01250
+S8 0.11430 0.05680 0.07000 -0.03030 0.05690 -0.02190
+

@@ -72,7 +72,6 @@ class Visualise_Sim(object):
         self._axes = None
         self._triangles = []                
                 
-    #TODO have possibility of directly specifying color, alpha, etc directly in atom_df
     def add_atoms(self, atoms_df, spheres=True, illustrate=False):
         """ add atoms to visualisation
 
@@ -113,29 +112,40 @@ class Visualise_Sim(object):
         """ remove the last n sets of atoms to be added """
         assert len(self._atoms) >= n
         self._atoms = self._atoms[:-n]
+
         
-    def add_box(self, vectors, origin=np.zeros(3), color='black', width=1):
+    def add_box(self, a,b,c, origin=[0,0,0], color='black', width=1):
         """ add wireframed box to visualisation
         
-       vectors : np.ndarray((3,3), dtype=float)
-          The three vectors representing the sides of the box.
+       a : np.ndarray(3, dtype=float)
+          The a vectors representing the sides of the box.
+       b : np.ndarray(3, dtype=float)
+          The b vectors representing the sides of the box.
+       c : np.ndarray(3, dtype=float)
+          The c vectors representing the sides of the box.
        origin : np.ndarray((3,3), dtype=float), default to zero
           The origin of the box.
         color : str
           the color of the wireframe, in chemlab colors
           
         """
-        vectors = self._unit_conversion(np.array(vectors), 'distance')
+        vectors = self._unit_conversion(np.array([a,b,c]), 'distance')
         origin = self._unit_conversion(np.array(origin), 'distance')
         color = str_to_colour(color)
         
         self._boxes.append([vectors, origin, color, width])
+
+    def add_box_from_meta(self,meta, color='black', width=1):
+        """ a shortcut for adding boxes using a panda.Series containing a,b,c,origin
+        """
+        self.add_box(meta.a,meta.b,meta.c,meta.origin,color,width)
 
     def remove_boxes(self, n=1):
         """ remove the last n boxes to be added """
         assert len(self._boxes) >= n
         self._boxes = self._boxes[:-n]
 
+    #TODO change vectors to a,b,c
     def add_hexagon(self, vectors, origin=np.zeros(3), color='black', width=1):
         """ add wireframed hexagonal prism to visualisation
         
@@ -158,7 +168,7 @@ class Visualise_Sim(object):
         assert len(self._hexagons) >= n
         self._hexagons = self._hexagons[:-n]
 
-    def add_axes(self, axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), 
+    def add_axes(self, axes=[[1,0,0],[0,1,0],[0,0,1]], 
                  length=1., offset=(-1.2,0.2), colors=('red','green','blue'),
                  width=1.5):
         """ add axes 
@@ -169,6 +179,7 @@ class Visualise_Sim(object):
             x, y offset from top top-left atom
         
         """
+        axes = np.asarray(axes)
         self._axes = [length*axes/np.linalg.norm(axes, axis=1), width,
                       offset, [str_to_colour(col) for col in colors]]
 
@@ -237,6 +248,8 @@ class Visualise_Sim(object):
         bbox = diff.getbbox()
         if bbox:
             return im.crop(bbox)
+        else:
+            raise RuntimeError('attempted to trim whitespace on an image that is all white')
 
     def _concat_images_horizontal(self, images, gap=10, background='white'):
         """ concatentate one or more PIL images horizontally 
@@ -356,7 +369,7 @@ class Visualise_Sim(object):
             v.add_renderer(AtomRenderer, r_array, radii, colors, backend=backend, 
                            transparent=transparent, shading=shading)             
        
-        all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
+            all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
         
         #boxes render
         for box_vectors, box_origin, box_color, box_width in self._boxes:
@@ -501,20 +514,20 @@ class Visualise_Sim(object):
         
         return ipy_Image(data=data, width=width, height=height)
 
-    def basic_vis(self, atoms_df=None, sim_box=None, 
+    def basic_vis(self, atoms_df=None, meta=None, 
                   spheres=True, illustrate=False, 
                   xrot=0, yrot=0, zrot=0, fov=10.,
                   axes=np.array([[1,0,0],[0,1,0],[0,0,1]]), axes_length=1., axes_offset=(-1.2,0.2),
                   size=400, quality=5):
         """ basic visualisation shortcut
         
-        invoking add_atoms, add_box (if sim_box), add_axes, get_image and visualise functions
+        invoking add_atoms, add_box (if meta), add_axes, get_image and visualise functions
         
         """
         if not atoms_df is None:
             self.add_atoms(atoms_df, spheres=spheres, illustrate=illustrate)
-        if not sim_box is None:
-            self.add_box(sim_box[0], sim_box[1])
+        if not meta is None:
+            self.add_box(meta.a,meta.b,meta.c,meta.origin)
         if not axes is None:
             self.add_axes(axes=axes, length=axes_length, offset=axes_offset)
             
@@ -523,7 +536,7 @@ class Visualise_Sim(object):
         
         # cleanup
         self._atoms.pop()
-        if not sim_box is None: self._boxes.pop()
+        if not meta is None: self._boxes.pop()
 
         return self.visualise(image)
         

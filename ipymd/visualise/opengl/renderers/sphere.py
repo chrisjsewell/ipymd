@@ -2,7 +2,7 @@ import numpy as np
 
 from .base import AbstractRenderer
 from .triangles import TriangleRenderer
-from ...transformations import normalized
+from ....shared.transformations import normalized
 
 
 class SphereRenderer(AbstractRenderer):

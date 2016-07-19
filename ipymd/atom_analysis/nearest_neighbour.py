@@ -53,7 +53,7 @@ def _longest_path(start,tree,lastnode=None):
     return path    
 
 def bond_lengths(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
-                      repeat_vectors=None, rounded=2, min_dist=0.01, leafsize=100):
+                      repeat_meta=None, rounded=2, min_dist=0.01, leafsize=100):
     """ calculate the unique bond lengths atoms in coords_atoms, w.r.t lattice_atoms
     
     atoms_df : pandas.Dataframe
@@ -66,8 +66,8 @@ def bond_lengths(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
         maximum distance for coordination consideration
     max_coord : float
         maximum possible coordination number
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     min_dist : float
         lattice points within this distance of the atom will be ignored (assumed self-interaction)
     leafsize : int
@@ -78,15 +78,18 @@ def bond_lengths(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
     distances : set
         list of unique distances
     
-    """
-    coord_df = Atom_Manipulation(atoms_df)
+    """        
+    if not coord_type in atoms_df.type.values or not lattice_type in atoms_df.type.values:
+        return set([])
+    
+    coord_df = Atom_Manipulation(atoms_df,repeat_meta)
     coord_df.filter_variables(coord_type)
    
-    lattice_df = Atom_Manipulation(atoms_df)
+    lattice_df = Atom_Manipulation(atoms_df,repeat_meta)
     lattice_df.filter_variables(lattice_type)
     
-    if repeat_vectors is not None:
-        lattice_df.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)))
+    if repeat_meta is not None:
+        lattice_df.repeat_cell((-1,1),(-1,1),(-1,1))
 
     lattice_tree = cKDTree(lattice_df.df[['x','y','z']].values, leafsize=leafsize)
     all_dists,all_ids = lattice_tree.query(coord_df.df[['x','y','z']].values, k=max_coord, distance_upper_bound=max_dist)
@@ -100,7 +103,7 @@ def bond_lengths(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
     return sorted(set(distances))
 
 def coordination(coord_atoms_df, lattice_atoms_df, max_dist=4, max_coord=16,
-                      repeat_vectors=None, min_dist=0.01, leafsize=100):
+                      repeat_meta=None, min_dist=0.01, leafsize=100):
     """ calculate the coordination number of each atom in coords_atoms, w.r.t lattice_atoms
     
     coords_atoms_df : pandas.Dataframe
@@ -111,8 +114,8 @@ def coordination(coord_atoms_df, lattice_atoms_df, max_dist=4, max_coord=16,
         maximum distance for coordination consideration
     max_coord : float
         maximum possible coordination number
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     min_dist : float
         lattice points within this distance of the atom will be ignored (assumed self-interaction)
     leafsize : int
@@ -124,10 +127,10 @@ def coordination(coord_atoms_df, lattice_atoms_df, max_dist=4, max_coord=16,
         list of coordination numbers
     
     """
-    lattice_df = Atom_Manipulation(lattice_atoms_df)
+    lattice_df = Atom_Manipulation(lattice_atoms_df,repeat_meta)
     
-    if repeat_vectors is not None:
-        lattice_df.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)))
+    if repeat_meta is not None:
+        lattice_df.repeat_cell((-1,1),(-1,1),(-1,1))
 
     lattice_tree = cKDTree(lattice_df.df[['x','y','z']].values, leafsize=leafsize)
     all_dists,all_ids = lattice_tree.query(coord_atoms_df[['x','y','z']].values, k=max_coord, distance_upper_bound=max_dist)
@@ -138,7 +141,7 @@ def coordination(coord_atoms_df, lattice_atoms_df, max_dist=4, max_coord=16,
     return coords
 
 def coordination_bytype(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
-                      repeat_vectors=None, min_dist=0.01, leafsize=100):
+                      repeat_meta=None, min_dist=0.01, leafsize=100):
     """ returns dataframe with additional column for the coordination number of 
     each atom of coord type, w.r.t lattice_type atoms
     
@@ -154,8 +157,8 @@ def coordination_bytype(atoms_df, coord_type, lattice_type, max_dist=4, max_coor
         maximum distance for coordination consideration
     max_coord : float
         maximum possible coordination number
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     min_dist : float
         lattice points within this distance of the atom will be ignored (assumed self-interaction)
     leafsize : int
@@ -169,6 +172,9 @@ def coordination_bytype(atoms_df, coord_type, lattice_type, max_dist=4, max_coor
     """
     df = atoms_df.copy()
     df['coord_{0}_{1}'.format(coord_type, lattice_type)] = np.nan      
+
+    if not coord_type in df.type.values or not lattice_type in df.type.values:
+        return df
     
     coord_df = Atom_Manipulation(df)
     coord_df.filter_variables(coord_type)
@@ -177,7 +183,7 @@ def coordination_bytype(atoms_df, coord_type, lattice_type, max_dist=4, max_coor
     lattice_df.filter_variables(lattice_type)
             
     coords = coordination(coord_df.df,lattice_df.df,max_dist, max_coord,
-                                    repeat_vectors, min_dist, leafsize)
+                                    repeat_meta, min_dist, leafsize)
                                     
 
     df.loc[df['type']==coord_type,'coord_{0}_{1}'.format(coord_type, lattice_type)] = coords
@@ -206,7 +212,7 @@ def compare_to_lattice(atoms_df, lattice_atoms_df, max_dist=10,leafsize=100):
     dists,idnums = lattice_tree.query(atoms_df[['x','y','z']].values, k=1, distance_upper_bound=max_dist)
     return dists
 
-def vacancy_identification(atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, remove_dups=True,
+def vacancy_identification(atoms_df, res=0.2, nn_dist=2., repeat_meta=None, remove_dups=True,
              color='red',transparency=1.,radius=1, type_name='Vac', leafsize=100, 
              n_jobs=1, ipython_progress=False, ):
         """ identify vacancies
@@ -217,8 +223,8 @@ def vacancy_identification(atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, r
             resolution of vacancy identification, i.e. spacing of reference lattice
         nn_dist : float
             maximum nearest-neighbour distance considered as a vacancy 
-        repeat_vectors : np.array((3,3))
-            include consideration of repeating boundary idenfined by a,b,c vectors
+        repeat_meta : pandas.Series
+            include consideration of repeating boundary idenfined by a,b,c in the meta data
         remove_dups : bool
             only keep one vacancy site within the nearest-neighbour distance
         leafsize : int
@@ -239,9 +245,9 @@ def vacancy_identification(atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, r
         zmin, zmax = atoms_df.z.min(),atoms_df.z.max()
         xyz = np.mgrid[xmin:xmax:res, ymin:ymax:res, zmin:zmax:res].reshape(3,-1).T
 
-        if repeat_vectors is not None:
-            repeat = Atom_Manipulation(atoms_df)
-            repeat.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)),original_first=True)
+        if repeat_meta is not None:
+            repeat = Atom_Manipulation(atoms_df,repeat_meta)
+            repeat.repeat_cell((-1,1),(-1,1),(-1,1),original_first=True)
             lattice_df = repeat.df
         else:
             lattice_df = atoms_df
@@ -288,7 +294,7 @@ def vacancy_identification(atoms_df, res=0.2, nn_dist=2., repeat_vectors=None, r
 #https://www.quora.com/Given-a-set-of-atomic-types-and-coordinates-from-an-MD-simulation-is-there-a-good-algorithm-for-determining-its-likely-crystal-structure?__filter__=all&__nsrc__=2&__snid3__=179254150
 # http://iopscience.iop.org/article/10.1088/0965-0393/20/4/045021/pdf            
 def common_neighbour_analysis(atoms_df, upper_bound=4, max_neighbours=24,
-                              repeat_vectors=None, leafsize=100, ipython_progress=False):
+                              repeat_meta=None, leafsize=100, ipython_progress=False):
     """ compute atomic environment of each atom in atoms_df
     
     Based on Faken, Daniel and Jónsson, Hannes,
@@ -303,8 +309,8 @@ def common_neighbour_analysis(atoms_df, upper_bound=4, max_neighbours=24,
     
     Paramaters
     ----------
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     ipython_progress : bool
         print progress to IPython Notebook
 
@@ -317,9 +323,9 @@ def common_neighbour_analysis(atoms_df, upper_bound=4, max_neighbours=24,
     df = atoms_df.copy()
     max_id = df.shape[0] - 1 # starts at 0
     
-    if repeat_vectors is not None:
-        repeat = Atom_Manipulation(df)
-        repeat.repeat_cell(repeat_vectors,((-1,1),(-1,1),(-1,1)),original_first=True)
+    if repeat_meta is not None:
+        repeat = Atom_Manipulation(df,repeat_meta)
+        repeat.repeat_cell((-1,1),(-1,1),(-1,1),original_first=True)
         lattice_df = repeat.df
     else:
         lattice_df = df
@@ -383,7 +389,7 @@ def _equala(i, j, accuracy):
     return j*accuracy <= i <= j+j*(1-accuracy)
     
 def cna_categories(atoms_df, accuracy=1., upper_bound=4, max_neighbours=24,
-                repeat_vectors=None, leafsize=100, ipython_progress=False):
+                repeat_meta=None, leafsize=100, ipython_progress=False):
     """ compute summed atomic environments of each atom in atoms_df
     
     Based on Faken, Daniel and Jónsson, Hannes,
@@ -401,8 +407,8 @@ def cna_categories(atoms_df, accuracy=1., upper_bound=4, max_neighbours=24,
     ----------
     accuracy : float
         0 to 1 how accurate to fit to signature
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     ipython_progress : bool
         print progress to IPython Notebook
 
@@ -413,7 +419,7 @@ def cna_categories(atoms_df, accuracy=1., upper_bound=4, max_neighbours=24,
 
     """
     df = common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
-                                        repeat_vectors, leafsize=leafsize, 
+                                        repeat_meta, leafsize=leafsize, 
                                         ipython_progress=ipython_progress)
     
     cnas = df.cna.values
@@ -436,7 +442,7 @@ def cna_categories(atoms_df, accuracy=1., upper_bound=4, max_neighbours=24,
     return df
 
 def cna_sum(atoms_df, upper_bound=4, max_neighbours=24,
-                repeat_vectors=None, leafsize=100, ipython_progress=False):
+                repeat_meta=None, leafsize=100, ipython_progress=False):
     """ compute summed atomic environments of each atom in atoms_df
     
     Based on Faken, Daniel and Jónsson, Hannes,
@@ -452,8 +458,8 @@ def cna_sum(atoms_df, upper_bound=4, max_neighbours=24,
 
     Parameters
     ----------
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     ipython_progress : bool
         print progress to IPython Notebook
 
@@ -464,7 +470,7 @@ def cna_sum(atoms_df, upper_bound=4, max_neighbours=24,
 
     """
     df = common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
-                                        repeat_vectors, leafsize=leafsize, 
+                                        repeat_meta, leafsize=leafsize, 
                                         ipython_progress=ipython_progress)
     
     cnas = df.cna.values
@@ -472,7 +478,7 @@ def cna_sum(atoms_df, upper_bound=4, max_neighbours=24,
 
 #TODO move plotting to plotting module
 def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
-                repeat_vectors=None, leafsize=100, 
+                repeat_meta=None, leafsize=100, 
                 barwidth=1, ipython_progress=False):
     """ compute summed atomic environments of each atom in atoms_df
     
@@ -489,8 +495,8 @@ def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
 
     Parameters
     ----------
-    repeat_vectors : np.array((3,3))
-        include consideration of repeating boundary idenfined by a,b,c vectors
+    repeat_meta : pandas.Series
+        include consideration of repeating boundary idenfined by a,b,c in the meta data
     ipython_progress : bool
         print progress to IPython Notebook
 
@@ -501,7 +507,7 @@ def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
 
     """
     df = common_neighbour_analysis(atoms_df, upper_bound, max_neighbours, 
-                                        repeat_vectors, leafsize=leafsize, 
+                                        repeat_meta, leafsize=leafsize, 
                                         ipython_progress=ipython_progress)
     
     cnas = df.cna.values
@@ -538,7 +544,7 @@ def cna_plot(atoms_df, upper_bound=4, max_neighbours=24,
     return plot
 
 #TODO _group_molecules needs work
-def _group_molecules(atom_df,moltypes,maxdist=3,repeat_vectors=None,
+def _group_molecules(atom_df,moltypes,maxdist=3,repeat_meta=None,
                     mean_xyz=True,remove_atoms=True,
                     color='red',transparency=1.,radius=1.,
                     leafsize=100):
@@ -549,9 +555,9 @@ def _group_molecules(atom_df,moltypes,maxdist=3,repeat_vectors=None,
     #old_index = search_df.index
     search_df.reset_index(inplace=True)
 
-    if repeat_vectors is not None:
-        manip = Atom_Manipulation(search_df)
-        manip.repeat_cell(repeat_vectors,repetitions=((-1,1), (-1,1), (-1, 1)),original_first=True)
+    if repeat_meta is not None:
+        manip = Atom_Manipulation(search_df,repeat_meta)
+        manip.repeat_cell((-1,1), (-1,1), (-1, 1),original_first=True)
         lattice_df = manip.df
         lattice_df.reset_index(inplace=True,drop=True)
         rep_map = dict(zip(range(lattice_df.shape[0]),list(search_df.index)*27))

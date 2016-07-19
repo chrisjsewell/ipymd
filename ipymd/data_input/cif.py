@@ -18,9 +18,18 @@ class CIF(DataInput):
     """ Build a crystal from  a Crystallographic Information File (.cif)
 
     """ 
-    def __init__(self, file_path, ignore_overlaps=False):
+    def setup_data(self, file_path, override_abc=[], ignore_overlaps=False):
         """ Build a crystal from  a Crystallographic Information File (.cif)
-
+    
+        Parameters
+        -----------
+        file_path : str
+            path to file
+         override_abc : [] or [a,b,c]
+             if not empty, will override a, b, c length parameters given in file
+            
+        Notes
+        -----
         here is a typical example of a CIF file:
             
              _cell_length_a 4.916
@@ -47,52 +56,46 @@ class CIF(DataInput):
              _atom_site_fract_z
              Si   0.46970   0.00000   0.00000
              O   0.41350   0.26690   0.11910
-    
-        Parameters
-        -----------
-        file_path : str
-            path to file
-            
+
         """ 
         self._file_path = file_path
         self._ignore_overlaps = ignore_overlaps
+        self._override_abc = override_abc
+        self._data_set = True
     
-    def get_atom_data(self, override_abc=[]):
+    def _get_atom_data(self, step):
         """ return atom data 
-        
-         override_abc : [] or [a,b,c]
-             if not empty, will override a, b, c length parameters given in file
-        
         """
         cif_data = self._read_cif_file(self._file_path)
-        if len(override_abc)==3:
-            cif_data['_cell_length_a'] = override_abc[0]
-            cif_data['_cell_length_b'] = override_abc[1]
-            cif_data['_cell_length_c'] = override_abc[2]
+        if len(self._override_abc)==3:
+            cif_data['_cell_length_a'] = self._override_abc[0]
+            cif_data['_cell_length_b'] = self._override_abc[1]
+            cif_data['_cell_length_c'] = self._override_abc[2]
             cif_data['_cell_volume'] = np.nan
             
-        atoms_df, vectors = self._convert_cif_data(cif_data, self._ignore_overlaps)
+        atoms_df,origin,a,b,c = self._convert_cif_data(cif_data, self._ignore_overlaps)
         self._add_colors(atoms_df)
         self._add_radii(atoms_df)
         return atoms_df
+    
+    def _get_meta_data(self, step):
 
-    def get_simulation_box(self, override_abc=[]):
-        """ return list of coordinates origin & [a,b,c]  
-        
-         override_abc : [] or [a,b,c]
-             if not empty, will override a, b, c length parameters given in file
-        
+        """ return pandas.Series of origin, a, b & c coordinates 
         """
         cif_data = self._read_cif_file(self._file_path)
-        if len(override_abc)==3:
-            cif_data['_cell_length_a'] = override_abc[0]
-            cif_data['_cell_length_b'] = override_abc[1]
-            cif_data['_cell_length_c'] = override_abc[2]
+        if len(self._override_abc)==3:
+            cif_data['_cell_length_a'] = self._override_abc[0]
+            cif_data['_cell_length_b'] = self._override_abc[1]
+            cif_data['_cell_length_c'] = self._override_abc[2]
             cif_data['_cell_volume'] = np.nan
 
-        atoms_df, vectors = self._convert_cif_data(cif_data, self._ignore_overlaps)
-        return vectors
+        atoms_df,origin,a,b,c = self._convert_cif_data(cif_data, self._ignore_overlaps)
+        return pd.Series([origin,a,b,c],index=['origin','a','b','c'])
 
+    def _count_configs(self):
+        """ return int of total number of atomic configurations """
+        return 1
+        
     #TODO read and deal with occupancy values (and overlapping atoms)        
     def _read_cif_file(self, file_path):
         """
@@ -390,6 +393,6 @@ class CIF(DataInput):
         
         df = pd.DataFrame(atoms, columns=['type', 'x', 'y', 'z','occupancy'])
     
-        return df, (np.array([a,b,c]),np.array([0.,0.,0.]))   
+        return df,(0.,0.,0.),tuple(a),tuple(b),tuple(c)
         
         
