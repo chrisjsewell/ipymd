@@ -87,7 +87,7 @@ data.setup_data(
     225, cellpar=[5.4, 5.4, 5.4, 90, 90, 90], 
     repetitions=[5, 5, 5])
 meta = data.get_meta_data()
-print meta
+print(meta)
 atoms_df = data.get_atom_data()
 atoms_df.head(2)
 
@@ -155,7 +155,7 @@ vis.basic_vis(data.get_atom_data(), data.get_meta_data(),
 lammps_path = ipymd.get_data_path('atom_onefile.dump')
 data = ipymd.data_input.lammps.LAMMPS_Output()
 data.setup_data(lammps_path)
-print data.count_configs()
+print(data.count_configs())
 
 vis = ipymd.visualise_sim.Visualise_Sim()
 vis.basic_vis(data.get_atom_data(99), data.get_meta_data(99),
@@ -167,7 +167,7 @@ vis.basic_vis(data.get_atom_data(99), data.get_meta_data(99),
 lammps_path = ipymd.get_data_path(['atom_dump','atoms_*.dump'])
 data = ipymd.data_input.lammps.LAMMPS_Output()
 data.setup_data(lammps_path)
-print data.count_configs()
+print(data.count_configs())
 
 vis = ipymd.visualise_sim.Visualise_Sim()
 vis.basic_vis(data.get_atom_data(99), data.get_meta_data(99),
@@ -178,7 +178,7 @@ vis.basic_vis(data.get_atom_data(99), data.get_meta_data(99),
 
 # The atoms Dataframe is already very easy to manipulate using the standard [pandas](http://pandas.pydata.org/) methods. But an `Atom_Manipulation` class has also been created to carry out standard atom manipulations, such as setting variables dependant on atom type or altering the geometry, as shown in this example:
 
-# In[21]:
+# In[15]:
 
 data = ipymd.data_input.crystal.Crystal()
 data.setup_data(
@@ -478,7 +478,7 @@ Image(exp_path,width=380)
 
 # Within the `LAMMPS_Output` class there is also the option to read in a systems data file, with a log of global variables for each simulation timestep.
 
-# In[2]:
+# In[28]:
 
 data = ipymd.data_input.lammps.LAMMPS_Output()
 sys_path = ipymd.get_data_path('system.dump')
@@ -487,9 +487,9 @@ sys_data = data.get_meta_data_all()
 sys_data.head()
 
 
-# In[5]:
+# In[29]:
 
-ax = sys_data.plot('time','temp')
+ax = sys_data.plot('time','temp',legend=False)
 ax.set_xlabel('Time (fs)')
 ax.set_ylabel('Temperature (K)');
 ax.grid()
@@ -499,7 +499,7 @@ ax.grid()
 
 # Plotting is handled by the `Plotter` class, which is mainly a useful wrapper around `matplotlib`.
 
-# In[5]:
+# In[30]:
 
 df = pd.DataFrame(
         [[2,3,4,1,[0, 0, 255],1],
@@ -525,7 +525,7 @@ with ipymd.plotting.style('xkcd'):
 
 # Matplotlib also has an animation capability:
 
-# In[6]:
+# In[31]:
 
 import numpy as np
 x_iter = [np.linspace(0, 2, 1000) for i in range(100)]
@@ -543,7 +543,7 @@ line_anim
 
 # One could imagine using this feature to overlay time-dependant field information on to 2D visualiations of atomic configurations:
 
-# In[7]:
+# In[32]:
 
 # visualise atoms
 df = pd.DataFrame(
