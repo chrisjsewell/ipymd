@@ -11,14 +11,6 @@ Subpackages
 Submodules
 ----------
 
-ipymd.visualise.transformations module
---------------------------------------
-
-.. automodule:: ipymd.visualise.transformations
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 ipymd.visualise.visualise_sim module
 ------------------------------------
 

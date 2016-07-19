@@ -20,6 +20,14 @@ ipymd.shared.colors module
     :undoc-members:
     :show-inheritance:
 
+ipymd.shared.transformations module
+-----------------------------------
+
+.. automodule:: ipymd.shared.transformations
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
