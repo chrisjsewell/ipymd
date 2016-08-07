@@ -25,16 +25,14 @@ class AtomRenderer(AbstractRenderer):
         The parent QChemlabWidget
     r_array: np.ndarray((NATOMS, 3), dtype=float)
         The atomic coordinate array
-    type_array: np.ndarray((NATOMS, 3), dtype=object)
-        An array containing all the atomic symbols like `Ar`, `H`, `O`.
-        If the atomic type is unknown, use the `Xx` symbol.
+        
     backend: "impostors" | "polygons" | "points"
         You can choose the rendering method between the sphere impostors, 
         polygonal sphere and points.
     
-        .. seealso: :py:class:`~chemlab.graphics.renderers.SphereRenderer`
-                    :py:class:`~chemlab.graphics.renderers.SphereImpostorRenderer`
-                    :py:class:`~chemlab.graphics.renderers.PointRenderer`
+        .. seealso: :py:class:`~ipymd.visualise.opengl.renderers.SphereRenderer`
+                    :py:class:`~ipymd.visualise.opengl.renderers.SphereImpostorRenderer`
+                    :py:class:`~ipymd.visualise.opengl.renderers.PointRenderer`
         
     """
 

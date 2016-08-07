@@ -32,10 +32,10 @@ class LineRenderer(ShaderBaseRenderer):
 
         self.width = width
         self.viewer = widget
-        self.n_lines = len(startends)
+        self.n_indices = len(startends)*2
         
-        vertices = np.array(startends, dtype=np.float32)
-        colors = np.array(colors, dtype=np.uint8)
+        vertices = np.array(startends, dtype=np.float32).flatten()
+        colors = np.array(colors, dtype=np.uint8).flatten()
         
         self._vbo_v = VertexBuffer(vertices, GL_DYNAMIC_DRAW)
         self._vbo_c = VertexBuffer(colors, GL_DYNAMIC_DRAW)
@@ -50,7 +50,7 @@ class LineRenderer(ShaderBaseRenderer):
         glEnableClientState(GL_COLOR_ARRAY)
         self._vbo_c.bind_colors(4, GL_UNSIGNED_BYTE)
         
-        glDrawArrays(GL_LINES, 0, self.n_lines)
+        glDrawArrays(GL_LINES, 0, self.n_indices)
         
         glDisableClientState(GL_VERTEX_ARRAY)
         glDisableClientState(GL_COLOR_ARRAY)

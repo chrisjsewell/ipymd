@@ -1,5 +1,9 @@
 conda create -n ipymd python=2.7.11=0 numpy scipy matplotlib pandas ipython ipython-notebook pillow pyopengl pyqt six spyder
 
+This is also helpful:
+source activate ipymd
+pip install https://github.com/ipython-contrib/IPython-notebook-extensions/tarball/master
+
 alabaster                 0.7.8                    py27_0  
 appnope                   0.1.0                    py27_0  
 babel                     2.3.3                    py27_0  

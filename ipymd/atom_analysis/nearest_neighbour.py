@@ -7,6 +7,7 @@ Created on Thu Jul 14 14:05:09 2016
 functions based on nearest neighbour calculations
 
 """
+import math
 import pandas as pd
 import numpy as np
 from scipy.spatial import cKDTree
@@ -14,6 +15,7 @@ from collections import Counter
 from IPython.core.display import clear_output
 import matplotlib.patches as mpatches
 
+from .. import shared
 from ..atom_manipulation import Atom_Manipulation
 from ..plotting import Plotter
 
@@ -51,6 +53,69 @@ def _longest_path(start,tree,lastnode=None):
             path = new_path
     path.append(start)
     return path    
+
+def guess_bonds(atoms_df, covalent_radii=None, threshold=0.1, max_length=5., 
+                radius=0.1,transparency=1.,color=None):
+    """ guess bonds between atoms, based on approximate covalent radii
+    
+    Parameters
+    ----------
+    atoms_df : pandas.Dataframe
+        all atoms, requires colums ['x','y','z','type', 'color']
+    covalent_radii : dict or None
+        a dict of covalent radii for each atom type, if None then taken from ipymd.shared.atom_data
+    threshold : float
+        include bonds with distance +/- threshold of guessed bond length (Angstrom)
+    max_length : float
+        maximum bond length to include (Angstrom)
+    radius : float
+        radius of displayed bond cylinder (Angstrom)
+    transparency : float
+        transparency of displayed bond cylinder
+    color : str or tuple
+        color of displayed bond cylinder, if None then colored by atom color
+    
+    Returns
+    -------
+    bonds_df : pandas.Dataframe
+        a dataframe with start/end indexes relating to atoms in atoms_df
+    
+    """
+    if atoms_df.index.tolist() != [_ for _ in range(atoms_df.shape[0])]:
+        raise ValueError('the index for atoms_df must be in order, i.e. [0,1,2,...]')
+        
+    if covalent_radii is None:
+        df = shared.atom_data()  
+        covalent_radii = df.RCov.to_dict()
+        
+    r_array = atoms_df[['x','y','z']].values
+    
+    ck = cKDTree(r_array)
+    pairs = ck.query_pairs(max_length)
+    
+    bonds = []
+    for i,j in pairs:
+        a, b = covalent_radii[atoms_df.iloc[i].type], covalent_radii[atoms_df.iloc[j].type]
+        rval = a + b
+        
+        thr_a = rval - threshold
+        thr_b = rval + threshold 
+        
+        #thr_a2 = thr_a * thr_a
+        thr_b2 = thr_b * thr_b
+        dr2  = ((r_array[i] - r_array[j])**2).sum()
+        
+        # print(dr2)
+        
+        if dr2 < thr_b2:
+            if color is None:
+                bonds.append((i, j,math.sqrt(dr2),radius,
+                              atoms_df.iloc[i].color,atoms_df.iloc[j].color,transparency))
+            else:
+                bonds.append((i, j,math.sqrt(dr2),radius,
+                              color,color,transparency))
+                
+    return pd.DataFrame(bonds, columns=['start','end','length','radius','color_start','color_end','transparency'])
 
 def bond_lengths(atoms_df, coord_type, lattice_type, max_dist=4, max_coord=16,
                       repeat_meta=None, rounded=2, min_dist=0.01, leafsize=100):

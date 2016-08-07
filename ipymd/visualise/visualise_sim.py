@@ -20,9 +20,11 @@ from .opengl.renderers.atom import AtomRenderer
 from .opengl.renderers.triangle import TriangleRenderer
 from .opengl.renderers.box import BoxRenderer
 from .opengl.renderers.hexagon import HexagonRenderer
+from .opengl.renderers.bond import BondRenderer
 #from .opengl.postprocessing import (FXAAEffect, GammaCorrectionEffect, 
 #                                             OutlineEffect, SSAOEffect)
 
+##TODO simplify, change to MVC pattern
 class Visualise_Sim(object):
     """ 
     A class to visualise atom data    
@@ -31,13 +33,6 @@ class Visualise_Sim(object):
     
     def __init__(self, units='real'):
         """
-        colormap: dict, should contain the 'Xx' key,value pair
-           A dictionary mapping atom types to colors. By default it is the color
-           scheme provided by `chemlab.graphics.colors.default_atom_map`. The 'Xx'
-           symbol value is taken as the default color.        
-        radii_map: dict, should contain the 'Xx' key,value pair.
-           A dictionary mapping atom types to radii. The default is the
-           mapping contained in `chemlab.db.vdw.vdw_dict`        
         For units *real*, these are the units:
         
             mass = grams/mole
@@ -60,6 +55,7 @@ class Visualise_Sim(object):
         
         # rendered objects
         self._atoms = []
+        self._bonds = []
         self._boxes = []
         self._hexagons = []
         self._axes = None
@@ -67,6 +63,7 @@ class Visualise_Sim(object):
         
     def remove_all_objects(self):
         self._atoms = []
+        self._bonds = []
         self._boxes = []
         self._hexagons = []
         self._axes = None
@@ -112,8 +109,71 @@ class Visualise_Sim(object):
         """ remove the last n sets of atoms to be added """
         assert len(self._atoms) >= n
         self._atoms = self._atoms[:-n]
+    
+    ##TODO start/end bonds at atom radii
+    def add_bonds(self, atoms_df, bonds_df, 
+                  cylinders=False, illustrate=False, linewidth=5):
+        """ add bonds to visualisation
 
+        atoms_df : pandas.DataFrame
+            a table of atom data, must contain columns; x, y, z
+        bonds_df : list
+            a table of bond data, must contain; start, end, radius, color, transparency
+            to/from refer to the atoms_df iloc (not necessarily the index number!)
+        cylinders : bool
+            whether the bonds are rendered as cylinders or lines
+        illustrate : str
+            if True, atom shading is more indicative of an illustration
+        """
+        assert set(['x','y','z','radius','color','transparency']).issubset(set(atoms_df.columns))
+        assert set(['start','end','radius','transparency']).issubset(set(bonds_df.columns))
+        assert (set(['color']).issubset(set(bonds_df.columns)) or 
+                set(['color_start','color_end']).issubset(set(bonds_df.columns)))       
         
+        r_array = np.array(atoms_df[['x','y','z']])
+        r_array = self._unit_conversion(r_array, 'distance')
+        
+        #bounds = np.empty((bonds_df.shape[0], 2, 3))   
+        #bounds[:, 0, :] = r_array[bonds_df.start.values]
+        #bounds[:, 1, :] = r_array[bonds_df.end.values]
+        starts = r_array[bonds_df.start.values]
+        ends = r_array[bonds_df.end.values]
+        
+        radii = np.array(bonds_df['radius'])
+        radii = self._unit_conversion(radii, 'distance')
+
+        def get_colors(name):       
+            cols = bonds_df[name].apply(
+                    lambda x: str_to_colour(x) if isinstance(x,string_types) else list(x) + [255]).tolist()
+            if None in cols:
+                raise ValueError('one or more colors not found')
+            cols = np.array(cols)
+            return cols
+        
+        if 'color_start' in bonds_df.columns and 'color_end' in bonds_df.columns:
+            col_start = get_colors('color_start')
+            col_end = get_colors('color_end')
+        else:
+            col_start = get_colors('color')
+            col_end = col_start
+        
+
+        alphas = np.array(bonds_df['transparency'])
+        
+        backend = 'impostors' if cylinders else 'lines'
+        
+        shading = 'toon' if illustrate else 'phong'
+        
+        assert max(alphas) <= 1. and min(alphas) > 0., 'transparency must be between 0 and 1'
+
+        self._bonds.append([starts, ends, radii, col_start, col_end, 
+                            alphas, backend, shading,linewidth])           
+
+    def remove_bonds(self, n=1):
+        """ remove the last n sets of bonds to be added """
+        assert len(self._bonds) >= n
+        self._bonds = self._bonds[:-n]
+    
     def add_box(self, a,b,c, origin=[0,0,0], color='black', width=1):
         """ add wireframed box to visualisation
         
@@ -313,11 +373,11 @@ class Visualise_Sim(object):
         return img
 
     #TODO orthogonal perspective
-    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., size=400, quality=5,
-                  zoom_extents=None, trim_whitespace=True):
-        """ get image of visualisation
+    def _renderer_opengl(self, xrot=0, yrot=0, zrot=0, fov=5.,thickness=1, 
+                         zoom_extents=None):
+        """ render objects in opengl
         
-        NB: x-axis horizontal, y-axis vertical, z-axis out of page
+        to open an external qtviewer use viewer.run()
         
         Parameters
         ----------
@@ -329,18 +389,17 @@ class Visualise_Sim(object):
             rotation about z (degrees)
         fov : float
             field of view angle (degrees)
-        size : float
-            size of image
-        quality : float
-            quality of image (pixels per point), note: higher quality will take longer to render
+        thickness : float
+            multiplier for thickness of lines of some objects
         zoom_extents : None or np.ndarray((N, 3))
              define an array of points to autozoom image, if None then computed automatically
-        trim_whitespace : bool
-            whether to trim whitspace around image
         
         Return
         ------
-        image : PIL.Image
+        viewer : PyQt4.QtGui.QMainWindow   
+            the qt viewing window
+        widget : PyQt4.QtOpenGL.QGLWidget
+            the qt widget holding the rendered objects
 
         """        
         # an array of all points in the image (used to calculate axes position)
@@ -357,6 +416,20 @@ class Visualise_Sim(object):
         ## ADD RENDERERS
         ## ----------------------------
          
+        #bonds renderer
+        for starts, ends, radii, colors_start, colors_end, alphas, backend, shading,linewidth in self._bonds:
+            #TODO issue with bonds on top of atoms if atoms transparent and bond not
+            transparent = True
+            colors_start[:,3] = alphas*255
+            colors_end[:,3] = alphas*255
+
+            v.add_renderer(BondRenderer, starts, ends, colors_start, colors_end, radii, backend=backend, 
+                           transparent=transparent, shading=shading,
+                           linewidth=linewidth)             
+
+            all_array = starts if all_array is None else np.concatenate([all_array,starts])
+            all_array = np.concatenate([all_array,ends])
+
         #atoms renderer
         for r_array, radii, colors, alphas, backend, shading in self._atoms:
             
@@ -370,11 +443,11 @@ class Visualise_Sim(object):
                            transparent=transparent, shading=shading)             
        
             all_array = r_array if all_array is None else np.concatenate([all_array,r_array])
-        
+                
         #boxes render
         for box_vectors, box_origin, box_color, box_width in self._boxes:
             v.add_renderer(BoxRenderer,box_vectors,box_origin,
-                           color=box_color, width=box_width*quality)           
+                           color=box_color, width=box_width*thickness)           
             #TODO account for other corners of box?
             b_array = box_vectors + box_origin                           
             all_array = b_array if all_array is None else np.concatenate([all_array,b_array])
@@ -382,7 +455,7 @@ class Visualise_Sim(object):
         #hexagonal prism render
         for hex_vectors, hex_origin, hex_color, hex_width in self._hexagons:
             v.add_renderer(HexagonRenderer,hex_vectors,hex_origin,
-                           color=hex_color, width=hex_width*quality)           
+                           color=hex_color, width=hex_width*thickness)           
             #TODO account for other vertices of hexagon?
             h_array = hex_vectors + hex_origin                           
             all_array = h_array if all_array is None else np.concatenate([all_array,h_array])
@@ -432,18 +505,83 @@ class Visualise_Sim(object):
             
             vectors = axes + origin
             for vector, color in zip(vectors, axes_colors):
-                # for some reason it won't render if theres not a 'dummy' 2nd element
-                startends = [[origin, vector],[origin, vector]]                      
-                colors = [[color, color],[color, color]]
+                startends = [[origin, vector]]                      
+                colors = [[color, color]]
                 #TODO add as arrows instead of lines 
-                v.add_renderer(LineRenderer, startends, colors, width=axes_width*quality)
+                v.add_renderer(LineRenderer, startends, colors, width=axes_width*thickness)
                 #TODO add x,y,z labels (look at chemlab.graphics.__init__?)
 
         if zoom_extents is None:        
             w.camera.autozoom(all_array)
         else:
             w.camera.autozoom(np.asarray(zoom_extents))
+        
+        return v, w
 
+    def open_qtview(self, xrot=0, yrot=0, zrot=0, fov=5.,thickness=1, 
+                         zoom_extents=None):
+        """ open a qt viewer of the objects
+        
+        Parameters
+        ----------
+        rotx: float
+            rotation about x (degrees)
+        roty: float
+            rotation about y (degrees)
+        rotz: float
+            rotation about z (degrees)
+        fov : float
+            field of view angle (degrees)
+        thickness : float
+            multiplier for thickness of lines for some objects
+        zoom_extents : None or np.ndarray((N, 3))
+             define an array of points to autozoom image, if None then computed automatically
+        
+        Return
+        ------
+        viewer : PyQt4.QtGui.QMainWindow   
+            the qt viewing window
+
+        """  
+        v, w = self._renderer_opengl(xrot, yrot, zrot, fov, thickness, zoom_extents)        
+        v.run()
+        # Cleanup
+        w.close()
+        v.clear()
+        
+        
+    def get_image(self, xrot=0, yrot=0, zrot=0, fov=5., size=400, quality=5,
+                  zoom_extents=None, trim_whitespace=True):
+        """ get image of visualisation
+        
+        NB: x-axis horizontal, y-axis vertical, z-axis out of page
+        
+        Parameters
+        ----------
+        rotx: float
+            rotation about x (degrees)
+        roty: float
+            rotation about y (degrees)
+        rotz: float
+            rotation about z (degrees)
+        fov : float
+            field of view angle (degrees)
+        size : float
+            size of image
+        quality : float
+            quality of image (pixels per point), note: higher quality will take longer to render
+        zoom_extents : None or np.ndarray((N, 3))
+             define an array of points to autozoom image, if None then computed automatically
+        trim_whitespace : bool
+            whether to trim whitspace around image
+        
+        Return
+        ------
+        image : PIL.Image
+
+        """        
+        v, w = self._renderer_opengl(xrot, yrot, zrot, fov, quality, zoom_extents)        
+        
         # convert scene to image
         image = w.toimage(int(size*quality), int(size*quality))
         image.thumbnail((int(size),int(size)),Image.ANTIALIAS)
@@ -540,3 +678,26 @@ class Visualise_Sim(object):
 
         return self.visualise(image)
         
+if __name__ == '__main__':
+
+    import pandas as pd
+    atoms_df = pd.DataFrame(
+            [[2,3,4,1,[0, 0, 255],1],
+             [1,3,3,1,'orange',0.5],
+             [4,3,1,1,'blue',1],
+    [3,4,1,1,'blue',1]],
+            columns=['x','y','z','radius','color','transparency'])
+    bonds_df = pd.DataFrame(
+            [
+             [1,2,0.1,'green','green',1],
+    [0,3,0.1,'blue','green',1],
+    [3,1,0.1,'red','green',1],
+    [3,2,0.1,'pink','green',1]],
+            columns=['start','end','radius','color_start','color_end','transparency'])
+    import ipymd
+    vis = ipymd.visualise_sim.Visualise_Sim()
+    vis.add_atoms(atoms_df,spheres=True)
+    vis.add_bonds(atoms_df,bonds_df,cylinders=True,linewidth=100)
+    img1 = vis.get_image(size=400,quality=5,xrot=90,yrot=10)
+    img1
+    vis.open_qtview(xrot=90,yrot=10)
