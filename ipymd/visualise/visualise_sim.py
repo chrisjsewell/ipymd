@@ -292,7 +292,7 @@ class Visualise_Sim(object):
 
         return values * self._unit_dict[self._units][measure]
 
-    def _trim_image(self, im):
+    def _trim_image(self, im, threshold=100):
         """
         a simple solution to trim whitespace on the image
         
@@ -304,7 +304,7 @@ class Visualise_Sim(object):
         """
         bg = Image.new(im.mode, im.size, im.getpixel((0,0)))
         diff = ImageChops.difference(im, bg)
-        diff = ImageChops.add(diff, diff, 2.0, -100)
+        diff = ImageChops.add(diff, diff, 2.0, -threshold)
         bbox = diff.getbbox()
         if bbox:
             return im.crop(bbox)
@@ -587,7 +587,7 @@ class Visualise_Sim(object):
         image.thumbnail((int(size),int(size)),Image.ANTIALIAS)
         
         if trim_whitespace:
-            image = self._trim_image(image)
+            image = self._trim_image(image, threshold=10)
 
         # Cleanup
         w.close()
