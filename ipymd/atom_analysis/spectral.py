@@ -469,13 +469,17 @@ def compute_xrd(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=Tru
     
     return np.degrees(2*thetas), I
 
-def plot_xrd_hist(ang2thetas, intensities, bins=180*100, wlambda=None,barwidth=None):
+def plot_xrd_hist(ang2thetas, intensities, bins=180*100,min_intensity=0.,barwidth=None, ax=None, **kwargs):
     """ create histogram plot of xrd spectrum
     
     Properties
     ----------
+    min_intensity : float
+        minimum relative intensities to display
     barwidth : float or None
-        if None then the barwidht will be the bin width
+        if None then the barwidth will be the bin width
+    kwargs : optional
+        additional arguments for bar plot (e.g. label, color, alpha)
     
     Returns
     -------
@@ -485,22 +489,30 @@ def plot_xrd_hist(ang2thetas, intensities, bins=180*100, wlambda=None,barwidth=N
     """
     I_hist, theta_edges = np.histogram(ang2thetas,bins=bins,
                                        weights=np.real(intensities),density=True)
+    I_hist = I_hist / I_hist.max()
+
     if barwidth is None:
         bin_width = (ang2thetas.max() - ang2thetas.min())/bins
     else:
         bin_width = barwidth
     theta_left = theta_edges[:-1]
-    zero_mask = I_hist!=0
+    zero_mask = I_hist>min_intensity
     
-    plot = plotting.Plotter()
-    plot.axes.bar(theta_left[zero_mask],I_hist[zero_mask],bin_width,
-                     label=r'$\lambda = {0}$'.format(wlambda))
-    plot.axes.set_xlabel(r'Scatteting Angle ($2 \theta$)')
-    plot.axes.set_ylabel('Relative Intensity')
-    plot.axes.set_yticklabels([])
-    plot.axes.grid(True) 
-    if wlambda is not None:
-        plot.axes.legend(loc='upper right',framealpha=0.5)
+    if ax is None:
+        plot = plotting.Plotter()
+        ax = plot.axes
+    else:
+        plot=None
+    
+    ax.bar(theta_left[zero_mask],I_hist[zero_mask],bin_width,
+                     **kwargs)#label=r'$\lambda = {0}$'.format(wlambda))
+    ax.set_xlabel(r'Scatteting Angle ($2 \theta$)')
+    ax.set_ylabel('Relative Intensity')
+    ax.set_yticklabels([])
+    ax.grid(True) 
+    if 'label' in kwargs.keys():
+        ax.legend(loc='upper right',framealpha=0.5)
+
     return plot
 
 ##TODO identification and classification of peaks    
