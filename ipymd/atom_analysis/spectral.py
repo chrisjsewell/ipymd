@@ -142,7 +142,7 @@ def _original_compute_rmesh(sim_abc, wlambda, min_theta, max_theta,
     for i in range(3):
         rmesh[:,i] *= dK[i]
     
-    return rmesh
+    return rmesh, imesh
 
 def _compute_rmesh_triclinic(sim_abc, wlambda, min_theta, max_theta,
                               rspace=[1.,1.,1.],manual=False,periodic=[True,True,True]):
@@ -213,9 +213,9 @@ def _compute_rmesh_triclinic(sim_abc, wlambda, min_theta, max_theta,
                  imesh[:,1]*rspace[1] + 
                  imesh[:,2]*rspace[2]) 
     
-    return rmesh
+    return rmesh, imesh
     
-def _restrict_rmesh(rmesh, wlambda, min_theta, max_theta):
+def _restrict_rmesh(rmesh, imesh, wlambda, min_theta, max_theta):
     """filter mesh points to only those in Eswald's sphere 
     (and angular limits)
     
@@ -252,7 +252,7 @@ def _restrict_rmesh(rmesh, wlambda, min_theta, max_theta):
     # select only mesh points within the angular limits
     angle_mask = np.logical_and(theta <= max_theta, theta >= min_theta)
     # return remaining mesh points
-    return rmesh[radius_mask][angle_mask], K[angle_mask], theta[angle_mask]
+    return rmesh[radius_mask][angle_mask],imesh[radius_mask][angle_mask], K[angle_mask], theta[angle_mask]
 
 def get_sf_coeffs():
     datapath = get_data_path('xray_scattering_factors_coefficients.csv',
@@ -321,8 +321,13 @@ def _calc_intensities(atoms_df, rmesh_sphere, wlambda, struct_factors,
 
     Returns
     -------
+    2thetas : np.array((N,1))
+         2-theta (degrees) for each k-point
     intensities : np.array((N,1))
          intensity for each k-point
+    hkl : np.array((N,3))
+         h,k,l for each k-point, 
+         N.B.: if analysing a crystal then they will need to be divided by the number of unit cells (in each direction)
 
     """
     # compute F(K)
@@ -340,7 +345,7 @@ def _calc_intensities(atoms_df, rmesh_sphere, wlambda, struct_factors,
     return Lp*F*np.conjugate(F)/float(atoms_df.shape[0])
 
 
-def compute_xrd(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=True,
+def xrd_compute(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=True,
                 rspace=[1,1,1], manual=False,periodic=[True,True,True]):
     r"""Compute predicted x-ray diffraction intensities for a given wavelength
     
@@ -372,10 +377,8 @@ def compute_xrd(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=Tru
 
     Returns
     -------
-    2thetas : np.array((N,1))
-        2theta angles for each k-point (degrees)
-    intensities : np.array((N,1))
-         intensity for each k-point
+    df : pandas.DataFrame
+        theta (in degrees), I, h, k and l for each k-point
     
     Notes
     -----
@@ -462,56 +465,109 @@ def compute_xrd(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=Tru
     sim_abc = np.asarray([meta_data.a,meta_data.b,meta_data.c])
     
     min_theta, max_theta = _set_thetas(min2theta,max2theta)    
-    rmesh = _compute_rmesh_triclinic(sim_abc,wlambda,min_theta, max_theta,rspace, manual, periodic)
-    rmesh_sphere, k_mods, thetas = _restrict_rmesh(rmesh,wlambda,min_theta, max_theta)
+    rmesh, imesh = _compute_rmesh_triclinic(sim_abc,wlambda,min_theta, max_theta,rspace, manual, periodic)
+    rmesh_sphere,imesh_sphere, k_mods, thetas = _restrict_rmesh(rmesh,imesh,wlambda,min_theta, max_theta)
     struct_factors = _calc_struct_factors(atoms_df,rmesh_sphere,k_mods)
     I = _calc_intensities(atoms_df,rmesh_sphere,wlambda,struct_factors,thetas,k_mods,use_Lp=lp)
     
-    return np.degrees(2*thetas), I
+    return (pd.DataFrame({'theta':np.real(np.degrees(2*thetas)),'I':np.real(I),
+                           'h':imesh_sphere[:,0].astype(int),'k':imesh_sphere[:,1].astype(int),'l':imesh_sphere[:,2].astype(int)}))
 
-def plot_xrd_hist(ang2thetas, intensities, bins=180*100,min_intensity=0.,barwidth=None, ax=None, **kwargs):
-    """ create histogram plot of xrd spectrum
+def _stack_hkl(df, sym=False):
+    hkl = df[['h','k','l']].values
+    if sym:
+        hkl = np.sort(np.abs(hkl))[:,::-1]
+    return np.vstack({tuple(row) for row in hkl})
+
+def xrd_group_i(df,tstep=None,sym_equiv_hkl=True):
+    """ group xrd intensities by theta 
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+       containing columns; ['theta','I'] and optional ['h','k','l']
+    tstep: None or float
+       if not None, group thetas within ranges i to i+tstep
+    sym_equiv_hkl : bool
+       group hkl by (cubic) symmetry-equivalent refelections
     
+    Returns
+    -------
+    df : pandas.DataFrame
+
+    Notes
+    -----
+    if grouping by theta step, then the theta value for each group will be the intensity weighted average
+
+    """
+    if tstep is None:
+        g=df.groupby('theta')
+        g_df = pd.DataFrame({'I':g.I.sum(),'multiplicity':g.I.count()}).reset_index()
+    else:
+        df1 = df.copy()
+        df1['theta_ind'] = np.digitize(df.theta,np.arange(0,180,tstep))
+        df1['wt_theta'] = df.theta * df.I
+        g = df1.groupby('theta_ind')
+        g_df = pd.DataFrame({'theta':g.wt_theta.sum()/g.I.sum(),'I':g.I.sum(),'multiplicity':g.I.count()})
+    
+    g_df['I_norm'] = g_df.I/g_df.I.max()
+    if set(['h','k','l']).issubset(df.columns):
+        g_df['hkl'] = g.apply(_stack_hkl,sym_equiv_hkl).tolist()
+
+    return g_df    
+
+def xrd_plot(df, icol='I_norm', imin=0.01, barwidth=1.,
+             hkl_num=0, hkl_trange=[0.,180.],
+             ax=None, **kwargs):
+    """ create plot of xrd pattern
+
     Properties
     ----------
-    min_intensity : float
-        minimum relative intensities to display
+    df : pd.DataFrame
+        containing columns ['theta',icol] and optional ['hkl,'multiplicity]
+    icol : str
+        column name for intensity data
+    imin : float
+        minimum intensity to display
     barwidth : float or None
         if None then the barwidth will be the bin width
+    hkl_num : int
+        number of k-point values to label
+    hkl_trange : [float,float]
+        theta range within which to label peaks with k-point values
     kwargs : optional
         additional arguments for bar plot (e.g. label, color, alpha)
     
     Returns
     -------
     plot : ipymd.plotting.Plotting
-        a plot object
-    
-    """
-    I_hist, theta_edges = np.histogram(ang2thetas,bins=bins,
-                                       weights=np.real(intensities),density=True)
-    I_hist = I_hist / I_hist.max()
+        a plot object 
 
-    if barwidth is None:
-        bin_width = (ang2thetas.max() - ang2thetas.min())/bins
-    else:
-        bin_width = barwidth
-    theta_left = theta_edges[:-1]
-    zero_mask = I_hist>min_intensity
-    
+    """
     if ax is None:
         plot = plotting.Plotter()
         ax = plot.axes
     else:
         plot=None
-    
-    ax.bar(theta_left[zero_mask],I_hist[zero_mask],bin_width,
-                     **kwargs)#label=r'$\lambda = {0}$'.format(wlambda))
+
+    df1 = df[df[icol]>=imin]
+
+    ax.bar(df1.theta-0.5*barwidth,df1[icol],barwidth,**kwargs)
+
     ax.set_xlabel(r'Scatteting Angle ($2 \theta$)')
     ax.set_ylabel('Relative Intensity')
     ax.set_yticklabels([])
     ax.grid(True) 
     if 'label' in kwargs.keys():
-        ax.legend(loc='upper right',framealpha=0.5)
+        ax.legend(framealpha=0.5)
+
+    if hkl_num > 0:
+        l,u = hkl_trange
+        df2 = df1[(df1.theta>=l)&(df1.theta<=u)].sort_values(icol,ascending=True).iloc[-hkl_num:]
+        for idx, row in df2.iterrows():
+            hkl_string = '\n'.join([str(hkl) for hkl in row.hkl])
+            ax.annotate(hkl_string, (row.theta+barwidth*0.5,row[icol]),
+                        bbox=dict(facecolor='white',edgecolor='none',alpha=0.8,pad=0))
 
     return plot
 
