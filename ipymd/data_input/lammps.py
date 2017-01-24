@@ -152,19 +152,16 @@ class LAMMPS_Output(DataInput):
 
     """
     #TODO option to ensure timesteps of atom and sys are the same
-    def setup_data(self, atom_path='', sys_path='', 
-                   unscale_coords=True, sys_sep=' ',
+    def setup_data(self, atom_path='', sys_path='', sys_sep=' ',
+                   atom_map={},
                    incl_atom_step=False,incl_sys_data=True):
         """
         Data divided into two levels; meta and atom
         
         Properties
         ----------
-        unscale_coords : bool
-            By default, atom coords are written in a scaled format (from 0 to 1), 
-            i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
-            box boundaries 'a' vector. 
-            http://lammps.sandia.gov/doc/dump.html?highlight=dump
+        atom_map : dict
+            mapping of atom level variable names e.g. {'C_var[1]':'x'}
         sys_sep : str
             the separator between variables in the system data file
         incl_atom_time : bool
@@ -209,7 +206,8 @@ class LAMMPS_Output(DataInput):
             self._single_atom_file = True
             self._atom_path = atom_path
         
-        self._unscale = unscale_coords
+        #self._unscale = unscale_coords
+        self._atom_map = atom_map.copy()
         self._data_set = True
         self._incl_atom_step = incl_atom_step
         self._incl_sys_data = incl_sys_data
@@ -217,7 +215,6 @@ class LAMMPS_Output(DataInput):
     def _count_configs(self):
             return self._configs
 
-    #TODO include_bb
     def _get_meta_data_all(self, incl_bb=False):
         """ return pandas.DataFrame 
 
@@ -286,7 +283,7 @@ class LAMMPS_Output(DataInput):
                     if 'ITEM: TIMESTEP' in line: 
                         
                         if step==current_step:
-                            atoms_df =  self._extract_atom_data(f, self._unscale)
+                            atoms_df =  self._extract_atom_data(f,self._atom_map)
                             self._add_colors(atoms_df)
                             self._add_radii(atoms_df)
                             return atoms_df
@@ -308,7 +305,7 @@ class LAMMPS_Output(DataInput):
             with open(self._atom_path[step-1], 'r') as f:
                 for line in f:
                     if 'ITEM: TIMESTEP' in line: 
-                        atoms_df =  self._extract_atom_data(f, self._unscale)
+                        atoms_df =  self._extract_atom_data(f,self._atom_map)
                         self._add_colors(atoms_df)
                         self._add_radii(atoms_df)
                         return atoms_df
@@ -316,7 +313,7 @@ class LAMMPS_Output(DataInput):
             raise IOError("atom file of wrong format")
         
     
-    def _extract_atom_data(self, f, unscale_coords=True):
+    def _extract_atom_data(self, f, atom_map):
         """ """
         xy, xz, yz = 0., 0., 0.
         
@@ -344,15 +341,19 @@ class LAMMPS_Output(DataInput):
             atoms.append(np.array(line.split(),dtype=float))
         atoms_df = pd.DataFrame(atoms, columns=headers)
         
-        #fix legacy issue
-        atoms_df.rename(columns={'xs': 'x', 'ys': 'y', 'zs':'z'}, inplace=True)
+        atoms_df.rename(columns=self._atom_map, inplace=True)
 
-        if unscale_coords:
+        if set(['x','y','z']).issubset(atoms_df.columns):
+            pass
+        elif set(['xs','ys','zs']).issubset(atoms_df.columns):
+            atoms_df.rename(columns={'xs':'x','ys':'y','zs':'z'}, inplace=True)
             self._unscale_coords(atoms_df, 
                                  xlo_bound, xhi_bound, 
                                  ylo_bound, yhi_bound, 
                                  zlo_bound, zhi_bound, 
-                                 xy, xz, yz)        
+                                 xy, xz, yz)
+        else:
+            raise IOError('atom file does not contain x,y,z or xs,ys,zs data')
 
         return atoms_df
         
@@ -360,7 +361,7 @@ class LAMMPS_Output(DataInput):
                         xlo_bound, xhi_bound, ylo_bound, yhi_bound, 
                         zlo_bound, zhi_bound, xy, xz, yz):
         """
-        By default, atom coords are written in a scaled format (from 0 to 1), 
+        xs, ys and zs atom coords are written in a scaled format (from 0 to 1), 
         i.e. an x value of 0.25 means the atom is at a location 1/4 of the 
         box boundaries 'a' vector. 
         http://lammps.sandia.gov/doc/dump.html?highlight=dump
