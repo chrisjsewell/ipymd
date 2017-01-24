@@ -473,13 +473,16 @@ def xrd_compute(atoms_df, meta_data,wlambda, min2theta=1.,max2theta=179., lp=Tru
     return (pd.DataFrame({'theta':np.real(np.degrees(2*thetas)),'I':np.real(I),
                            'h':imesh_sphere[:,0].astype(int),'k':imesh_sphere[:,1].astype(int),'l':imesh_sphere[:,2].astype(int)}))
 
-def _stack_hkl(df, sym=False):
+##TODO add other symmetry-equivalent reflections
+def _stack_hkl(df, sym='none'):
     hkl = df[['h','k','l']].values
-    if sym:
+    if sym=='mmm':
+        hkl = np.abs(hkl)
+    elif sym=='m-3m':
         hkl = np.sort(np.abs(hkl))[:,::-1]
     return np.vstack({tuple(row) for row in hkl})
 
-def xrd_group_i(df,tstep=None,sym_equiv_hkl=True):
+def xrd_group_i(df,tstep=None,sym_equiv_hkl='none'):
     """ group xrd intensities by theta 
 
     Parameters
@@ -488,8 +491,8 @@ def xrd_group_i(df,tstep=None,sym_equiv_hkl=True):
        containing columns; ['theta','I'] and optional ['h','k','l']
     tstep: None or float
        if not None, group thetas within ranges i to i+tstep
-    sym_equiv_hkl : bool
-       group hkl by (cubic) symmetry-equivalent refelections
+    sym_equiv_hkl : str
+       group hkl by symmetry-equivalent refelections; ['none','mmm','m-3m']
     
     Returns
     -------
@@ -498,6 +501,24 @@ def xrd_group_i(df,tstep=None,sym_equiv_hkl=True):
     Notes
     -----
     if grouping by theta step, then the theta value for each group will be the intensity weighted average
+
+    Crystal System | Laue Class | Symmetry-Equivalent Reflections | Multiplicity
+    -------------- | ---------- | ------------------------------- | ------------
+    Triclinic 	   |    -1 	| hkl ≡ -h-k-l                                                | 2
+    Monoclinic 	   |    2/m 	| hkl ≡ -hk-l ≡ -h-k-l ≡ h-kl                                 | 4
+    Orthorhombic   |    mmm 	| hkl ≡ h-k-l ≡ -hk-l ≡ -h-kl ≡ -h-k-l ≡ -hkl ≡ h-kl ≡ hk-l   | 8
+    Tetragonal 	   |    4/m 	| hkl ≡ -khl ≡ -h-kl ≡ k-hl ≡ -h-k-l ≡ k-h-l ≡ hk-l ≡ -kh-l   | 8
+                   |    4/mmm 	| hkl ≡ -khl ≡ -h-kl ≡ k-hl ≡ -h-k-l ≡ k-h-l ≡ hk-l ≡ -kh-l   |
+                   |            | ≡ khl ≡ -hkl ≡ -k-hl ≡ h-kl ≡ -k-h-l ≡ h-k-l ≡ kh-l ≡ -hk-l | 16
+    Cubic 	   |    m-3 	| hkl ≡ -hkl ≡ h-kl ≡ hk-l ≡ -h-k-l ≡ h-k-l ≡ -hk-l ≡ -h-kl   |
+                   |            | ≡ klh ≡ -klh ≡ k-lh ≡ kl-h ≡ -k-l-h ≡ k-l-h ≡ -kl-h ≡ -k-lh |
+                   |            | ≡ lhk ≡ -lhk ≡ l-hk ≡ lh-k ≡ -l-h-k ≡ l-h-k ≡ -lh-k ≡ -l-hk | 24
+                   |    m-3m 	| hkl ≡ -hkl ≡ h-kl ≡ hk-l ≡ -h-k-l ≡ h-k-l ≡ -hk-l ≡ -h-kl   |
+                   |            | ≡ klh ≡ -klh ≡ k-lh ≡ kl-h ≡ -k-l-h ≡ k-l-h ≡ -kl-h ≡ -k-lh |
+                   |            | ≡ lhk ≡ -lhk ≡ l-hk ≡ lh-k ≡ -l-h-k ≡ l-h-k ≡ -lh-k ≡ -l-hk |
+                   |            | ≡ khl ≡ -khl ≡ k-hl ≡ kh-l ≡ -k-h-l ≡ k-h-l ≡ -kh-l ≡ -k-hl |
+                   |            | ≡ lkh ≡ -lkh ≡ l-kh ≡ lk-h ≡ -l-k-h ≡ l-k-h ≡ -lk-h ≡ -l-kh |
+                   |            | ≡ hlk ≡ -hlk ≡ h-lk ≡ hl-k ≡ -h-l-k ≡ h-l-k ≡ -hl-k ≡ -h-lk | 48    
 
     """
     if tstep is None:
@@ -517,14 +538,15 @@ def xrd_group_i(df,tstep=None,sym_equiv_hkl=True):
     return g_df    
 
 def xrd_plot(df, icol='I_norm', imin=0.01, barwidth=1.,
-             hkl_num=0, hkl_trange=[0.,180.],
+             hkl_num=0, hkl_trange=[0.,180.], incl_multi=False,
+             label_inline=True, label_trange=[0.,180.],
              ax=None, **kwargs):
     """ create plot of xrd pattern
 
     Properties
     ----------
     df : pd.DataFrame
-        containing columns ['theta',icol] and optional ['hkl,'multiplicity]
+        containing columns ['theta',icol] and optional ['hkl','multiplicity']
     icol : str
         column name for intensity data
     imin : float
@@ -535,6 +557,12 @@ def xrd_plot(df, icol='I_norm', imin=0.01, barwidth=1.,
         number of k-point values to label
     hkl_trange : [float,float]
         theta range within which to label peaks with k-point values
+    label_inline : bool
+        place k-point labels inline or at top of plot
+    label_trange : [float,float]
+        if not inline, theta range within which to fit k-point labels
+    incl_multi : bool
+        add multiplicity to k-point label 
     kwargs : optional
         additional arguments for bar plot (e.g. label, color, alpha)
     
@@ -561,13 +589,43 @@ def xrd_plot(df, icol='I_norm', imin=0.01, barwidth=1.,
     if 'label' in kwargs.keys():
         ax.legend(framealpha=0.5)
 
-    if hkl_num > 0:
+    if hkl_num > 0 and 'hkl' in df.columns:
         l,u = hkl_trange
-        df2 = df1[(df1.theta>=l)&(df1.theta<=u)].sort_values(icol,ascending=True).iloc[-hkl_num:]
-        for idx, row in df2.iterrows():
-            hkl_string = '\n'.join([str(hkl) for hkl in row.hkl])
-            ax.annotate(hkl_string, (row.theta+barwidth*0.5,row[icol]),
-                        bbox=dict(facecolor='white',edgecolor='none',alpha=0.8,pad=0))
+        if label_inline:
+            df2 = df1[(df1.theta>=l)&(df1.theta<=u)].sort_values(icol,ascending=True).iloc[-hkl_num:]
+            for idx, row in df2.iterrows():
+                hkl_string = '\n'.join([str(hkl) for hkl in row.hkl])
+                if incl_multi and 'multiplicity' in df.columns:
+                    hkl_string += '\nm='+str(row.multiplicity)
+                hkl_string = hkl_string.replace('. ',' ')
+                hkl_string = hkl_string.replace('[ ','[')
+                hkl_string = hkl_string.replace('.]',']')
+                hkl_string = hkl_string.replace('  ',' ')                
+                bbox=dict(facecolor='white',edgecolor='none',alpha=0.8,pad=0)
+                xydata = (row.theta+barwidth*0.5,row[icol])
+                ax.annotate(hkl_string, xy=xydata, bbox=bbox)
+        else:
+            df2 = df1[(df1.theta>=l)&(df1.theta<=u)].sort_values(icol,ascending=True).iloc[-hkl_num:]
+            df2.sort_values('theta',ascending=True,inplace=True)
+            spacing = np.linspace(label_trange[0],label_trange[1],hkl_num,endpoint=False).tolist()
+            for idx, row in df2.iterrows():
+                hkl_string = '\n'.join([str(hkl) for hkl in row.hkl])
+                if incl_multi and 'multiplicity' in df.columns:
+                    hkl_string += '\nm='+str(row.multiplicity)
+                hkl_string = hkl_string.replace('. ',' ')
+                hkl_string = hkl_string.replace('[ ','[')
+                hkl_string = hkl_string.replace('.]',']')
+                hkl_string = hkl_string.replace('  ',' ')                
+                bbox=dict(facecolor='white',edgecolor='none',alpha=0.8,pad=0)
+                xydata = (row.theta,row[icol])
+                xytext = (spacing.pop(0),df[icol].max()*1.2)
+                if xytext[0]<xydata[0]:
+                    cstyle="arc3,rad=.1"
+                else:
+                    cstyle="arc3,rad=-.1"
+                ax.annotate(hkl_string, xy=xydata,xytext=xytext, bbox=bbox,
+                        arrowprops=dict(arrowstyle="->",
+                                        linestyle='solid',connectionstyle=cstyle))
 
     return plot
 
